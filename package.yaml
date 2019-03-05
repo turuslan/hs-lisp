@@ -1,6 +1,6 @@
-name:                my-project
+name:                hs-lisp
 version:             0.1.0.0
-github:              "iu-haskell-fall-2018/my-project"
+github:              "turuslan/hs-lisp"
 license:             BSD3
 author:              "Nickolay Kudasov"
 maintainer:          "n.kudasov@innopolis.ru"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/iu-haskell-fall-2018/my-project#readme>
+description:         Please see the README on GitHub at <https://github.com/turuslan/hs-lisp#readme>
 
 custom-setup:
   dependencies:
@@ -35,7 +35,7 @@ library:
   source-dirs: src
 
 executables:
-  my-project-exe:
+  hs-lisp-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -43,7 +43,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - my-project
+    - hs-lisp
 
 tests:
   spec:
@@ -54,7 +54,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - my-project
+    - hs-lisp
     - hspec
     - HUnit
     - QuickCheck

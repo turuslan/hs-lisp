@@ -27,13 +27,13 @@ This will install all dependencies, including a proper version of GHC
 This project has one executable that you can run with
 
 ```
-stack exec my-project-exe
+stack exec hs-lisp-exe
 ```
 
 During development it is recommended a combination of `build` and `exec`:
 
 ```
-stack build && stack exec my-project-exe
+stack build && stack exec hs-lisp-exe
 ```
 
 Alternatively, you can run

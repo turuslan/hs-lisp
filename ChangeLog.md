@@ -1,3 +1,3 @@
-# Changelog for my-project
+# Changelog for hs-lisp
 
 ## Unreleased changes

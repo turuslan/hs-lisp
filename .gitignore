@@ -1,5 +1,5 @@
 .stack-work/
-my-project.cabal
+hs-lisp.cabal
 *~
 dist
 dist-*
