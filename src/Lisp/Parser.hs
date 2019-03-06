@@ -1,6 +1,7 @@
 module Lisp.Parser where
 
 import Lisp.Ast
+import Lisp.Parser.Number
 
 import Control.Monad
 import Text.ParserCombinators.Parsec
@@ -13,10 +14,11 @@ import qualified Data.Functor.Identity
 
 languageDef :: GenLanguageDef String u Data.Functor.Identity.Identity
 languageDef = emptyDef
-  { Token.identStart = letter
-  , Token.identLetter = alphaNum
+  { Token.identStart = ident
+  , Token.identLetter = ident
   , Token.reservedOpNames = ["."]
   }
+  where ident = alphaNum <|> oneOf "_+-*/=<>!?[]&~@#$%^."
 lexer :: Token.GenTokenParser String u Data.Functor.Identity.Identity
 lexer = Token.makeTokenParser languageDef
 
@@ -25,17 +27,11 @@ sexprs = sepBy sexpr (Token.whiteSpace lexer)
 
 sexpr :: Parser SExpr
 sexpr =
-  liftM Atom (Token.identifier lexer)
-  <|> number
-  <|> (Token.parens lexer) list
+  (Token.parens lexer) list
   <|> liftM StringLiteral (Token.stringLiteral lexer)
+  <|> try number
+  <|> liftM Atom (Token.identifier lexer)
   where
-    number = do
-      neg <- (Token.lexeme lexer) ((char '-' >> return True) <|> (char '+' >> return False) <|> return False)
-      n <- Token.naturalOrFloat lexer
-      case n of
-        Left v -> return $ IntegerLiteral (if neg then (-v) else v)
-        Right v -> return $ FloatLiteral (if neg then (-v) else v)
     list = do
       before_dot <- sexprs
       after_dot <- (Token.reservedOp lexer "." >> sexpr) <|> return EmptyList
