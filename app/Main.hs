@@ -1,6 +1,8 @@
 module Main where
 
-import           MyProject
+import Lisp
+
+
 
 main :: IO ()
 main = run
