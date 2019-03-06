@@ -14,7 +14,7 @@ import Text.Parsec.String
 number :: Parser SExpr
 number = do
   n <- intOrFloat
-  (oneOf " ()" >> return ()) <|> eof
+  lookAhead ((oneOf " ()" >> return ()) <|> eof)
   return n
   where
     sign = (char '-' >> return "-")
