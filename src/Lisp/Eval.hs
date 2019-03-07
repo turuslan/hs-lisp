@@ -8,7 +8,30 @@ import Lisp.Ast
 data Context
 
 eval :: Context -> SExpr -> SExpr
-eval _ = id
+eval c (DottedPair (Atom "+") args) = eval__plus $ eval_args c args
+eval _ s = s
+
+eval__plus :: [SExpr] -> SExpr
+eval__plus args
+  | any is_float args = FloatLiteral $ sum $ map to_float args
+  | otherwise = IntegerLiteral $ sum $ map to_integer args
+
+to_float :: SExpr -> Double
+to_float (FloatLiteral value) = value
+to_float (IntegerLiteral value) = fromInteger value
+to_float _ = todo_runtime_error
+
+to_integer :: SExpr -> Integer
+to_integer (IntegerLiteral value) = value
+to_integer _ = todo_runtime_error
+
+is_float :: SExpr -> Bool
+is_float (FloatLiteral _) = True
+is_float _ = False
+
+eval_args :: Context -> SExpr -> [SExpr]
+eval_args c (DottedPair car cdr) = eval c car : eval_args c cdr
+eval_args _ _ = []
 
 -- TODO: runtime error
 todo_runtime_error :: a

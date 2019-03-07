@@ -9,6 +9,7 @@ data SExpr
   | StringLiteral String
   | EmptyList
   | DottedPair SExpr SExpr
+  deriving Eq
 
 instance Show SExpr where
   show (Atom name) = name
