@@ -4,9 +4,10 @@ import Lisp.Ast
 import Lisp.Parser.Number
 
 import Control.Monad
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Language
-import qualified Text.ParserCombinators.Parsec.Token as Token
+import Text.Parsec
+import Text.Parsec.String
+import Text.Parsec.Language
+import qualified Text.Parsec.Token as Token
 
 import qualified Data.Functor.Identity
 
@@ -22,23 +23,31 @@ languageDef = emptyDef
 lexer :: Token.GenTokenParser String u Data.Functor.Identity.Identity
 lexer = Token.makeTokenParser languageDef
 
+whiteSpace :: Parser ()
+whiteSpace = Token.whiteSpace lexer
+
 sexprs :: Parser [SExpr]
-sexprs = sepBy sexpr (Token.whiteSpace lexer)
+sexprs = sepBy sexpr whiteSpace
+
+parens :: Parser a -> Parser a
+parens = Token.parens lexer
 
 sexpr :: Parser SExpr
 sexpr =
-  (Token.parens lexer) list
+  try ((parens $ return ()) >> return EmptyList)
+  <|> parens list
   <|> liftM StringLiteral (Token.stringLiteral lexer)
   <|> try number
   <|> liftM Atom (Token.identifier lexer)
   where
     list = do
-      before_dot <- sexprs
-      after_dot <- (Token.reservedOp lexer "." >> sexpr) <|> return EmptyList
-      return $ foldr DottedPair after_dot before_dot
+      car <- sexpr
+      whiteSpace
+      cdr <- try (char '.' >> lookAhead (oneOf " \r\n\t(\"") >> whiteSpace >> sexpr) <|> (lookAhead sexpr >> list) <|> return EmptyList
+      return $ DottedPair car cdr
 
 whileParser :: Parser [SExpr]
-whileParser = (Token.whiteSpace lexer) >> sexprs
+whileParser = whiteSpace >> sexprs
 
 parseString :: String -> [SExpr]
 parseString s = case parse whileParser "" s of
