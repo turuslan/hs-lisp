@@ -2,36 +2,52 @@ module Lisp.Eval where
 
 import Lisp.Ast
 
+import Control.Monad (liftM, ap)
 
 
--- TODO: context type
-data Context
 
-eval :: Context -> SExpr -> SExpr
-eval c (DottedPair (Atom "+") args) = eval__plus $ eval_args c args
-eval _ s = s
+-- monad
+type Lookup a = [(String, a)]
 
-eval__plus :: [SExpr] -> SExpr
-eval__plus args
-  | any is_float args = FloatLiteral $ sum $ map to_float args
-  | otherwise = IntegerLiteral $ sum $ map to_integer args
+type Fun = SExpr -> Eval SExpr
 
-to_float :: SExpr -> Double
-to_float (FloatLiteral value) = value
-to_float (IntegerLiteral value) = fromInteger value
-to_float _ = todo_runtime_error
+data State = State
+  { sPendingOutput :: [String]
+  , sPendingInput :: [String]
+  , sVars :: Lookup SExpr
+  , sFuns :: Lookup Fun
+  }
 
-to_integer :: SExpr -> Integer
-to_integer (IntegerLiteral value) = value
-to_integer _ = todo_runtime_error
+instance Show State where
+  show s = "State {sVars = " ++ show (sVars s) ++ "}"
 
-is_float :: SExpr -> Bool
-is_float (FloatLiteral _) = True
-is_float _ = False
+data LispError = LispError String deriving Show
 
-eval_args :: Context -> SExpr -> [SExpr]
-eval_args c (DottedPair car cdr) = eval c car : eval_args c cdr
-eval_args _ _ = []
+newtype Eval a = Eval (State -> (State, Either (Either a LispError) (Eval a)))
+
+instance Functor Eval where
+  fmap = liftM
+
+instance Applicative Eval where
+  pure  = return
+  (<*>) = ap
+
+instance Monad Eval where
+  Eval c1 >>= fc2 = Eval (\s -> case c1 s of
+    (s', Left (Right e)) -> (s', Left (Right e))
+    (s', Left (Left v)) -> let Eval c2 = fc2 v in c2 s'
+    (s', Right pc1) -> (s', Right (pc1 >>= fc2)))
+
+  return v = Eval (\s -> (s, Left (Left v)))
+
+
+
+--
+eval :: SExpr -> Eval SExpr
+eval = return
+
+evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
+evalIO s (Eval c) = let (s', Left r) = c s in return (s', r)
 
 -- TODO: runtime error
 todo_runtime_error :: a
