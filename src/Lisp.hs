@@ -10,7 +10,7 @@ run :: IO ()
 run = do
   putStrLn $ show sampleAst
   putStrLn $ show parsedAst
-  putStrLn $ show $ eval undefined parsedAst
+  -- putStrLn $ show $ eval undefined parsedAst
 
 parsedAst :: SExpr
 parsedAst = head $ parseString $ show sampleAst
@@ -33,11 +33,11 @@ test = do
   match (parse1 "(+ 1 2)") (lisp_cons plus (lisp_cons (int 1) (lisp_cons (int 2) EmptyList)))
   match (parse1 "(+ 1 . 2)") (lisp_cons plus (lisp_cons (int 1) (int 2)))
   
-  match (eval undefined $ parse1 "(+)") (int 0)
-  match (eval undefined $ parse1 "(+ 1 2)") (int 3)
-  match (eval undefined $ parse1 "(+ 1 . .2)") (int 1)
-  match (eval undefined $ parse1 "(+ 1 .2)") (float 1.2)
-  match (eval undefined $ parse1 "(+ 1. .2)") (float 1.2)
+  -- match (eval undefined $ parse1 "(+)") (int 0)
+  -- match (eval undefined $ parse1 "(+ 1 2)") (int 3)
+  -- match (eval undefined $ parse1 "(+ 1 . .2)") (int 1)
+  -- match (eval undefined $ parse1 "(+ 1 .2)") (float 1.2)
+  -- match (eval undefined $ parse1 "(+ 1. .2)") (float 1.2)
 
   where
     plus = Atom "+"
