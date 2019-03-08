@@ -43,6 +43,9 @@ instance Monad Eval where
 
 
 --
+initState :: State
+initState = State [] [] [] []
+
 eval :: SExpr -> Eval SExpr
 eval = return
 
