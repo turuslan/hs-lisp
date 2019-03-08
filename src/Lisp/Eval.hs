@@ -40,17 +40,77 @@ instance Monad Eval where
 
   return v = Eval (\s -> (s, Left (Left v)))
 
+eval_read :: Eval String
+eval_read = e where
+  e = Eval (\s -> case sPendingInput s of
+    [] -> (s, Right e)
+    x:xs -> (s {sPendingInput = xs}, Left $ Left x))
+
+eval_write :: String -> Eval ()
+eval_write str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left $ Left ()))
+
+eval_var :: String -> Eval (Maybe SExpr)
+eval_var name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
+
+eval_fun :: String -> Eval (Maybe Fun)
+eval_fun name = Eval (\s -> (s, Left $ Left $ lookup name $ sFuns s))
+
 
 
 --
 initState :: State
-initState = State [] [] [] []
+initState = State [] []
+  [ ("nil", EmptyList)
+  ]
+  [ ("read-int", fun_read_int)
+  , ("print", fun_print)
+  ]
 
 eval :: SExpr -> Eval SExpr
-eval = return
+eval e = case e of
+  Atom name -> do
+    mvar <- eval_var name
+    case mvar of
+      Just var -> return var
+      _ -> todo_runtime_error
+  DottedPair (Atom name) args -> do
+    mfun <- eval_fun name
+    case mfun of
+      Just fun -> fun args
+      _ -> todo_runtime_error
+  DottedPair _ _ -> todo_runtime_error
+  _ -> return e
 
 evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
-evalIO s (Eval c) = let (s', Left r) = c s in return (s', r)
+evalIO s (Eval c) = case c s of
+  (s', Left r) -> do
+    s'' <- flush s'
+    return (s'', r)
+  (s', Right pc) -> do
+    line <- getLine
+    evalIO s' {sPendingInput = [line]} pc
+  where
+    flush s'' = (putStr $ unlines $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
+
+
+
+--
+fun_read_int :: Fun
+fun_read_int EmptyList = do
+  str <- eval_read
+  case reads str :: [(Integer, String)] of
+    [(v, _)] -> return $ IntegerLiteral v
+    _ -> todo_runtime_error
+fun_read_int _ = todo_runtime_error
+
+fun_print :: Fun
+fun_print (DottedPair arg _) = do
+  arg' <- eval arg
+  eval_write $ show arg'
+  return arg'
+fun_print _ = todo_runtime_error
+
+
 
 -- TODO: runtime error
 todo_runtime_error :: a
