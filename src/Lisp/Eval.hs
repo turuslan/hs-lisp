@@ -12,6 +12,8 @@ type Lookup a = [(String, a)]
 
 type Fun = Vars -> Eval SExpr
 
+type Special = Vars -> Fun
+
 type Vars = Lookup SExpr
 
 data State = State
@@ -75,12 +77,18 @@ eval locals e = case e of
           Just var -> return var
           _ -> todo_runtime_error
   DottedPair (Atom name) aargs -> do
-    mfun <- eval_fun name
-    case mfun of
-      Just (fargs, fun) -> do
-        args <- get_args name fargs locals aargs
-        fun args
-      _ -> todo_runtime_error
+    case lookup name specials of
+      Just (fargs, special) -> do
+        args <- get_args name fargs aargs
+        special locals args
+      _ -> do
+        mfun <- eval_fun name
+        case mfun of
+          Just (fargs, fun) -> do
+            aargs' <- eval_args locals aargs
+            args <- get_args name fargs aargs'
+            fun args
+          _ -> todo_runtime_error
   DottedPair _ _ -> todo_runtime_error
   _ -> return e
 
@@ -95,28 +103,47 @@ evalIO s (Eval c) = case c s of
   where
     flush s'' = (putStr $ unlines $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
 
-get_args :: String -> SExpr -> Vars -> SExpr -> Eval Vars
-get_args _ EmptyList _ EmptyList = return []
-get_args fname EmptyList _ _ = eval_error ("too many arguments given to " ++ fname)
+eval_args :: Vars -> SExpr -> Eval SExpr
+eval_args locals (DottedPair car cdr) = do
+  car' <- eval locals car
+  cdr' <- eval_args locals cdr
+  return $ DottedPair car' cdr'
+eval_args _ _ = return EmptyList
 
-get_args _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) locals aargs = do
-  rest <- get_rest aargs
-  return [(aname, rest)]
-  where
-    get_rest (DottedPair car cdr) = do
-      car' <- eval locals car
-      cdr' <- get_rest cdr
-      return $ DottedPair car' cdr'
-    get_rest _ = return EmptyList
-get_args fname (DottedPair (Atom "&rest") _) _ _ = eval_error ("TODO: MSG: bad &rest in " ++ fname)
+get_args :: String -> SExpr -> SExpr -> Eval Vars
+get_args _ EmptyList EmptyList = return []
+get_args fname EmptyList _ = eval_error ("too many arguments given to " ++ fname)
 
-get_args fname (DottedPair (Atom aname) fcdr) locals (DottedPair acar acdr) = do
-  args <- get_args fname fcdr locals acdr
-  arg <- eval locals acar
-  return ((aname, arg) : args)
-get_args fname (DottedPair _ _) _ _ = eval_error ("too few arguments given to " ++ fname)
+get_args _ (DottedPair (Atom "&optional") fargs) aargs = return $ get_opt fargs aargs where
+  get_opt (DottedPair (Atom aname) fcdr) EmptyList = (aname, EmptyList) : get_opt fcdr EmptyList
+  get_opt (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = (aname, acar) : get_opt fcdr acdr
+  get_opt _ _ = []
 
-get_args fname _ _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
+get_args _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) aargs = return [(aname, aargs)]
+get_args fname (DottedPair (Atom "&rest") _) _ = eval_error ("TODO: MSG: bad &rest in " ++ fname)
+
+get_args fname (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = do
+  args <- get_args fname fcdr acdr
+  return ((aname, acar) : args)
+get_args fname (DottedPair _ _) _ = eval_error ("too few arguments given to " ++ fname)
+
+get_args fname _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
+
+
+
+--
+specials :: Lookup (SExpr, Special)
+specials =
+  [ ("if", (parse_args "(cnd then &optional else)", special_if))
+  ]
+
+special_if :: Special
+special_if locals [(_, cnd), (_, then'), (_, else')] = do
+  cnd' <- eval locals cnd
+  case cnd' of
+    EmptyList -> eval locals else'
+    _ -> eval locals then'
+special_if _ _ = impossible
 
 
 
