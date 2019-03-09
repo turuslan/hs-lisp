@@ -136,6 +136,7 @@ specials :: Lookup (SExpr, Special)
 specials =
   [ ("if", (parse_args "(cnd then &optional else)", special_if))
   , ("defun", (parse_args "(name args body)", special_defun))
+  , ("setq", (parse_args "(nane value)", special_setq))
   ]
 
 special_if :: Special
@@ -151,6 +152,12 @@ special_defun locals [(_, Atom name), (_, fargs), (_, body)] =
   Eval (\s -> (s {sFuns = (name, (fargs, f)) : sFuns s}, Left $ Left $ Atom name))
     where f args = eval (locals ++ args) body
 special_defun _ _ = eval_error "TODO: MSG: function name must be symbol"
+
+special_setq :: Special
+special_setq locals [(_, Atom name), (_, value)] = do
+  value' <- eval locals value
+  Eval (\s -> (s {sVars = (name, value') : sVars s}, Left $ Left value'))
+special_setq _ _ = eval_error "TODO: MSG: var name must be symbol"
 
 
 
