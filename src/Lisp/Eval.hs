@@ -1,6 +1,7 @@
 module Lisp.Eval where
 
 import Lisp.Ast
+import Lisp.Parser (parseString)
 
 import Control.Monad (liftM, ap)
 
@@ -122,6 +123,12 @@ get_args fname _ _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
 -- TODO: runtime error
 todo_runtime_error :: a
 todo_runtime_error = error "TODO"
+
+impossible :: a
+impossible = error "impossible"
+
+parse_args :: String -> SExpr
+parse_args = head . parseString
 
 
 

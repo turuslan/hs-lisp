@@ -2,7 +2,6 @@ module Lisp.Std where
 
 import Lisp.Ast
 import Lisp.Eval
-import Lisp.Parser (parseString)
 
 
 
@@ -15,12 +14,6 @@ initState = State [] []
   , ("print", (parse_args "(x)", fun_print))
   , ("+", (parse_args "(&rest xs)", fun__plus))
   ]
-
-parse_args :: String -> SExpr
-parse_args = head . parseString
-
-impossible :: a
-impossible = error "impossible"
 
 
 
