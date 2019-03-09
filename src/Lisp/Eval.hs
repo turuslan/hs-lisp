@@ -97,11 +97,24 @@ evalIO s (Eval c) = case c s of
 get_args :: String -> SExpr -> Vars -> SExpr -> Eval Vars
 get_args _ EmptyList _ EmptyList = return []
 get_args fname EmptyList _ _ = eval_error ("too many arguments given to " ++ fname)
+
+get_args _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) locals aargs = do
+  rest <- get_rest aargs
+  return [(aname, rest)]
+  where
+    get_rest (DottedPair car cdr) = do
+      car' <- eval locals car
+      cdr' <- get_rest cdr
+      return $ DottedPair car' cdr'
+    get_rest _ = return EmptyList
+get_args fname (DottedPair (Atom "&rest") _) _ _ = eval_error ("TODO: MSG: bad &rest in " ++ fname)
+
 get_args fname (DottedPair (Atom aname) fcdr) locals (DottedPair acar acdr) = do
   args <- get_args fname fcdr locals acdr
   arg <- eval locals acar
   return ((aname, arg) : args)
 get_args fname (DottedPair _ _) _ _ = eval_error ("too few arguments given to " ++ fname)
+
 get_args fname _ _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
 
 
