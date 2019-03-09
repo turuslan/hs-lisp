@@ -24,7 +24,7 @@ data State = State
   }
 
 instance Show State where
-  show s = "State {sVars = " ++ show (sVars s) ++ "}"
+  show s = "State {sVars = " ++ show (sVars s) ++ ", sFuns = " ++ (show $ map fst $ sFuns s) ++ "}"
 
 data LispError = LispError String deriving Show
 
@@ -135,6 +135,7 @@ get_args fname _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
 specials :: Lookup (SExpr, Special)
 specials =
   [ ("if", (parse_args "(cnd then &optional else)", special_if))
+  , ("defun", (parse_args "(name args body)", special_defun))
   ]
 
 special_if :: Special
@@ -144,6 +145,12 @@ special_if locals [(_, cnd), (_, then'), (_, else')] = do
     EmptyList -> eval locals else'
     _ -> eval locals then'
 special_if _ _ = impossible
+
+special_defun :: Special
+special_defun locals [(_, Atom name), (_, fargs), (_, body)] =
+  Eval (\s -> (s {sFuns = (name, (fargs, f)) : sFuns s}, Left $ Left $ Atom name))
+    where f args = eval (locals ++ args) body
+special_defun _ _ = eval_error "TODO: MSG: function name must be symbol"
 
 
 
