@@ -1,7 +1,6 @@
 module Lisp.Eval where
 
 import Lisp.Ast
-import Lisp.Parser (parseString)
 
 import Control.Monad (liftM, ap)
 
@@ -64,17 +63,6 @@ eval_error str = Eval (\s -> (s, Left $ Right $ LispError str))
 
 
 --
-initState :: State
-initState = State [] []
-  [ ("nil", EmptyList)
-  ]
-  [ ("read-int", (parse_args "()", fun_read_int))
-  , ("print", (parse_args "(x)", fun_print))
-  ]
-
-parse_args :: String -> SExpr
-parse_args = head . parseString
-
 eval :: Vars -> SExpr -> Eval SExpr
 eval locals e = case e of
   Atom name -> do
@@ -115,22 +103,6 @@ get_args fname (DottedPair (Atom aname) fcdr) locals (DottedPair acar acdr) = do
   return ((aname, arg) : args)
 get_args fname (DottedPair _ _) _ _ = eval_error ("too few arguments given to " ++ fname)
 get_args fname _ _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
-
-
-
---
-fun_read_int :: Fun
-fun_read_int _ = do
-  str <- eval_read
-  case reads str :: [(Integer, String)] of
-    [(v, _)] -> return $ IntegerLiteral v
-    _ -> todo_runtime_error
-
-fun_print :: Fun
-fun_print [(_, arg)] = do
-  eval_write $ show arg
-  return arg
-fun_print _ = todo_runtime_error
 
 
 
