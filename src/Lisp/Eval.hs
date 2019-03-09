@@ -1,6 +1,7 @@
 module Lisp.Eval where
 
 import Lisp.Ast
+import Lisp.Parser (parseString)
 
 import Control.Monad (liftM, ap)
 
@@ -9,13 +10,15 @@ import Control.Monad (liftM, ap)
 -- monad
 type Lookup a = [(String, a)]
 
-type Fun = SExpr -> Eval SExpr
+type Fun = Vars -> Eval SExpr
+
+type Vars = Lookup SExpr
 
 data State = State
   { sPendingOutput :: [String]
   , sPendingInput :: [String]
-  , sVars :: Lookup SExpr
-  , sFuns :: Lookup Fun
+  , sVars :: Vars
+  , sFuns :: Lookup (SExpr, Fun)
   }
 
 instance Show State where
@@ -52,8 +55,11 @@ eval_write str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left 
 eval_var :: String -> Eval (Maybe SExpr)
 eval_var name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
 
-eval_fun :: String -> Eval (Maybe Fun)
+eval_fun :: String -> Eval (Maybe (SExpr, Fun))
 eval_fun name = Eval (\s -> (s, Left $ Left $ lookup name $ sFuns s))
+
+eval_error :: String -> Eval a
+eval_error str = Eval (\s -> (s, Left $ Right $ LispError str))
 
 
 
@@ -62,21 +68,29 @@ initState :: State
 initState = State [] []
   [ ("nil", EmptyList)
   ]
-  [ ("read-int", fun_read_int)
-  , ("print", fun_print)
+  [ ("read-int", (parse_args "()", fun_read_int))
+  , ("print", (parse_args "(x)", fun_print))
   ]
 
-eval :: SExpr -> Eval SExpr
-eval e = case e of
+parse_args :: String -> SExpr
+parse_args = head . parseString
+
+eval :: Vars -> SExpr -> Eval SExpr
+eval locals e = case e of
   Atom name -> do
-    mvar <- eval_var name
-    case mvar of
+    case lookup name locals of
       Just var -> return var
-      _ -> todo_runtime_error
-  DottedPair (Atom name) args -> do
+      _ -> do
+        mvar <- eval_var name
+        case mvar of
+          Just var -> return var
+          _ -> todo_runtime_error
+  DottedPair (Atom name) aargs -> do
     mfun <- eval_fun name
     case mfun of
-      Just fun -> fun args
+      Just (fargs, fun) -> do
+        args <- get_args name fargs locals aargs
+        fun args
       _ -> todo_runtime_error
   DottedPair _ _ -> todo_runtime_error
   _ -> return e
@@ -92,22 +106,30 @@ evalIO s (Eval c) = case c s of
   where
     flush s'' = (putStr $ unlines $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
 
+get_args :: String -> SExpr -> Vars -> SExpr -> Eval Vars
+get_args _ EmptyList _ EmptyList = return []
+get_args fname EmptyList _ _ = eval_error ("too many arguments given to " ++ fname)
+get_args fname (DottedPair (Atom aname) fcdr) locals (DottedPair acar acdr) = do
+  args <- get_args fname fcdr locals acdr
+  arg <- eval locals acar
+  return ((aname, arg) : args)
+get_args fname (DottedPair _ _) _ _ = eval_error ("too few arguments given to " ++ fname)
+get_args fname _ _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
+
 
 
 --
 fun_read_int :: Fun
-fun_read_int EmptyList = do
+fun_read_int _ = do
   str <- eval_read
   case reads str :: [(Integer, String)] of
     [(v, _)] -> return $ IntegerLiteral v
     _ -> todo_runtime_error
-fun_read_int _ = todo_runtime_error
 
 fun_print :: Fun
-fun_print (DottedPair arg _) = do
-  arg' <- eval arg
-  eval_write $ show arg'
-  return arg'
+fun_print [(_, arg)] = do
+  eval_write $ show arg
+  return arg
 fun_print _ = todo_runtime_error
 
 
