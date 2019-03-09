@@ -98,10 +98,11 @@ evalIO s (Eval c) = case c s of
     s'' <- flush s'
     return (s'', r)
   (s', Right pc) -> do
+    s'' <- flush s'
     line <- getLine
-    evalIO s' {sPendingInput = [line]} pc
+    evalIO s'' {sPendingInput = [line]} pc
   where
-    flush s'' = (putStr $ unlines $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
+    flush s'' = (putStr $ unlines $ reverse $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
 
 eval_args :: Vars -> SExpr -> Eval SExpr
 eval_args locals (DottedPair car cdr) = do
