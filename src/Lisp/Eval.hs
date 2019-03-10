@@ -138,6 +138,7 @@ specials =
   [ ("if", (parse_args "(cnd then &optional else)", special_if))
   , ("defun", (parse_args "(name args body)", special_defun))
   , ("setq", (parse_args "(nane value)", special_setq))
+  , ("let", (parse_args "(vars body)", special_let))
   ]
 
 special_if :: Special
@@ -160,6 +161,11 @@ special_setq locals [(_, Atom name), (_, value)] = do
   Eval (\s -> (s {sVars = (name, value') : sVars s}, Left $ Left value'))
 special_setq _ _ = eval_error "TODO: MSG: var name must be symbol"
 
+special_let :: Special
+special_let locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) EmptyList), (_, body)] = do
+  value' <- eval locals value
+  eval ((name, value'):locals) body
+special_let _ _ = eval_error "TODO: special_let"
 
 
 
