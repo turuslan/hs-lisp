@@ -54,6 +54,13 @@ eval_read = e where
 eval_write :: String -> Eval ()
 eval_write str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left $ Left ()))
 
+eval_writec :: String -> Eval ()
+eval_writec str = Eval (\s -> (
+  s {sPendingOutput = case sPendingOutput s of
+    [] -> [str]
+    prefix:lines' -> (prefix ++ str) : lines'},
+  Left $ Left ()))
+
 eval_var :: String -> Eval (Maybe SExpr)
 eval_var name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
 

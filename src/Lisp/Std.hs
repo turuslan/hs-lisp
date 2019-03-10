@@ -12,6 +12,7 @@ initState = State [] []
   ]
   [ ("read-int", (parse_args "()", fun_read_int))
   , ("print", (parse_args "(x)", fun_print))
+  , ("princ", (parse_args "(x)", fun_princ))
   , ("+", (parse_args "(&rest xs)", fun__plus))
   , ("-", (parse_args "(num &rest xs)", fun__minus))
   , ("/", (parse_args "(num &rest xs)", fun__div))
@@ -38,9 +39,19 @@ fun_read_int _ = do
 
 fun_print :: Fun
 fun_print [(_, arg)] = do
-  eval_write $ show arg
+  eval_write $ _writing arg
   return arg
 fun_print _ = impossible
+
+fun_princ :: Fun
+fun_princ [(_, arg)] = do
+  eval_writec $ _writing arg
+  return arg
+fun_princ _ = impossible
+
+_writing :: SExpr -> String
+_writing (StringLiteral s) = s
+_writing e = show e
 
 fun__plus :: Fun
 fun__plus [(_, args)] = reduce (_math_binary (+) (+)) (IntegerLiteral 0) args
