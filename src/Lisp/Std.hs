@@ -26,6 +26,7 @@ initState = State [] []
   , ("list", (parse_args "(&rest xs)", fun_list))
   , ("floor", (parse_args "(x)", fun_floor))
   , ("append", (parse_args "(&rest lists)", fun_append))
+  , ("null", (parse_args "(object)", fun_null))
   ]
 
 
@@ -162,6 +163,13 @@ fun_append [(_, args)] = concat' EmptyList (argsToArray args)
         return $ DottedPair car e'
       concat' e _ = eval_error (show e ++ " is not a list")
 fun_append _ = impossible
+
+fun_null :: Fun
+fun_null [(_, arg)] = do
+  case arg of
+    EmptyList -> return $ _bool True
+    _ -> return $ _bool False
+fun_null _ = impossible
 
 --
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
