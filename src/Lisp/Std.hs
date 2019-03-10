@@ -84,12 +84,6 @@ reduce f acc (DottedPair car cdr) = do
   reduce f acc' cdr
 reduce _ acc _ = return acc
 
-is_number :: SExpr -> Bool
-is_number (FloatLiteral _) = True
-is_number (IntegerLiteral _) = True
-is_number _ = False
-
-
 _is_number :: SExpr -> Eval ()
 _is_number (IntegerLiteral _) = return ()
 _is_number (FloatLiteral _) = return ()
