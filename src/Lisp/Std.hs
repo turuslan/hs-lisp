@@ -15,6 +15,7 @@ initState = State [] []
   , ("+", (parse_args "(&rest xs)", fun__plus))
   , ("-", (parse_args "(num &rest xs)", fun__minus))
   , ("/", (parse_args "(num &rest xs)", fun__div))
+  , ("=", (parse_args "(a b)", fun__eq))
   ]
 
 
@@ -47,6 +48,15 @@ fun__minus :: Fun
 fun__minus [(_, num), (_, EmptyList)] = _math_binary (-) (-) (IntegerLiteral 0) num
 fun__minus [(_, num), (_, xs)] = reduce (_math_binary (-) (-)) num xs
 fun__minus _ = impossible
+
+fun__eq :: Fun
+fun__eq [(_, a), (_, b)] = do
+  ab <- coerce a b
+  case ab of
+    (IntegerLiteral a', IntegerLiteral b') -> return $ _bool (a' == b')
+    (FloatLiteral a', FloatLiteral b') -> return $ _bool (a' == b')
+    _ -> impossible
+fun__eq _ = impossible
 
 math_div :: SExpr -> SExpr -> Eval SExpr
 math_div a b = do
@@ -92,3 +102,13 @@ _math_binary fi ff a b = do
     (IntegerLiteral a', IntegerLiteral b') -> return $ IntegerLiteral $ fi a' b'
     (FloatLiteral a', FloatLiteral b') -> return $ FloatLiteral $ ff a' b'
     _ -> impossible
+
+_bool :: Bool -> SExpr
+_bool True = _true
+_bool False = _false
+
+_true :: SExpr
+_true = IntegerLiteral 1
+
+_false :: SExpr
+_false = EmptyList
