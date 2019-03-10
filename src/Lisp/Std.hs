@@ -25,6 +25,7 @@ initState = State [] []
   , ("cdr", (parse_args "(x)", fun_cdr))
   , ("list", (parse_args "(&rest xs)", fun_list))
   , ("floor", (parse_args "(x)", fun_floor))
+  , ("append", (parse_args "(&rest lists)", fun_append))
   ]
 
 
@@ -140,7 +141,27 @@ fun_floor [(_, arg)] = do
     _ -> impossible
 fun_floor _ = impossible
 
+fun_append :: Fun
+fun_append [(_, args)] = concat' EmptyList (argsToArray args)
+    where
+      argsToArray :: SExpr -> [SExpr]
+      argsToArray EmptyList = [EmptyList]
+      argsToArray (DottedPair car EmptyList) = [car]
+      argsToArray (DottedPair car cdr) = (car : argsToArray cdr)
+      argsToArray e = [e]
 
+      concat' :: SExpr -> [SExpr] -> Eval SExpr
+      concat' EmptyList [] = do return $ EmptyList
+      concat' EmptyList (e:es) = concat' e es
+      concat' e [] = do return $ e
+      concat' (DottedPair car EmptyList) (e:es) = do 
+        e' <- concat' e es
+        return $ DottedPair car e'
+      concat' (DottedPair car cdr) l = do 
+        e' <- concat' cdr l
+        return $ DottedPair car e'
+      concat' e _ = eval_error (show e ++ " is not a list")
+fun_append _ = impossible
 
 --
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
