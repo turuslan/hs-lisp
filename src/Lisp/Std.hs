@@ -25,8 +25,10 @@ initState = State [] []
   , ("cdr", (parse_args "(x)", fun_cdr))
   , ("list", (parse_args "(&rest xs)", fun_list))
   , ("floor", (parse_args "(x)", fun_floor))
-  , ("append", (parse_args "(&rest lists)", fun_append))
-  , ("null", (parse_args "(object)", fun_null))
+  , ("append", (parse_args "(&rest xs)", fun_append))
+  , ("null", (parse_args "(x)", fun_null))
+  , ("first", (parse_args "(x)", fun_car))
+  , ("rest", (parse_args "(x)", fun_cdr))
   ]
 
 
