@@ -47,8 +47,8 @@ fun__plus _ = impossible
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
 coerce a@(IntegerLiteral _) b@(IntegerLiteral _) = return (a, b)
 coerce a@(FloatLiteral _) b@(FloatLiteral _) = return (a, b)
-coerce (IntegerLiteral a) b@(FloatLiteral _) = return (IntegerLiteral $ fromInteger a, b)
-coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, IntegerLiteral $ fromInteger b)
+coerce (IntegerLiteral a) b@(FloatLiteral _) = return (FloatLiteral $ fromInteger a, b)
+coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, FloatLiteral $ fromInteger b)
 coerce a b = eval_error (show (if is_number a then b else a) ++ " is not a number")
 
 is_number :: SExpr -> Bool
