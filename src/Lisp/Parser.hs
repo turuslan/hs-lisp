@@ -18,6 +18,7 @@ languageDef = emptyDef
   { Token.identStart = ident
   , Token.identLetter = ident
   , Token.reservedOpNames = ["."]
+  , Token.commentLine     = ";"
   }
   where ident = alphaNum <|> oneOf "_+-*/=<>!?[]&~@#$%^."
 lexer :: Token.GenTokenParser String u Data.Functor.Identity.Identity
