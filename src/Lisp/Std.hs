@@ -22,6 +22,8 @@ initState = State [] []
   , ("cons", (parse_args "(a b)", fun_cons))
   , ("car", (parse_args "(x)", fun_car))
   , ("cdr", (parse_args "(x)", fun_cdr))
+  , ("list", (parse_args "(&rest xs)", fun_list))
+  , ("floor", (parse_args "(x)", fun_floor))
   ]
 
 
@@ -113,6 +115,19 @@ fun_cdr [(_, arg)] = do
     DottedPair _ cdr -> cdr
     _ -> EmptyList
 fun_cdr _ = impossible
+
+fun_list :: Fun
+fun_list [(_, args)] = return args
+fun_list _ = impossible
+
+fun_floor :: Fun
+fun_floor [(_, arg)] = do
+  _is_number arg
+  return $ case arg of
+    IntegerLiteral _ -> arg
+    FloatLiteral f -> IntegerLiteral $ floor f
+    _ -> impossible
+fun_floor _ = impossible
 
 
 
