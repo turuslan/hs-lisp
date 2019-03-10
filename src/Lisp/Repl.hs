@@ -4,12 +4,15 @@ import Lisp.Eval
 import Lisp.Parser
 import Lisp.Std
 
+import System.IO
+
 runRepl :: IO ()
 runRepl = repl initState
 
 repl :: State -> IO ()
 repl state = do
   putStr "> "
+  hFlush stdout
   input <- getLine
   case input of
     ":q" -> return ()
