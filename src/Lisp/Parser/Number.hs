@@ -33,7 +33,7 @@ number = do
       (char '.' >> (
         (oneOf "eE" >> ex (prefix ++ int' ++ ".0e"))
         <|> (lookAhead digit >> frEx (prefix ++ int' ++ "."))
-        <|> double (prefix ++ int')
+        <|> int (prefix ++ int')
         ))
         <|> (oneOf "eE" >> ex (prefix ++ int' ++ "e"))
         <|> int (prefix ++ int')
