@@ -16,6 +16,12 @@ initState = State [] []
   , ("-", (parse_args "(num &rest xs)", fun__minus))
   , ("/", (parse_args "(num &rest xs)", fun__div))
   , ("=", (parse_args "(a b)", fun__eq))
+  , ("atomp", (parse_args "(x)", fun_atomp))
+  , ("numberp", (parse_args "(x)", fun_numberp))
+  , ("listp", (parse_args "(x)", fun_listp))
+  , ("cons", (parse_args "(a b)", fun_cons))
+  , ("car", (parse_args "(x)", fun_car))
+  , ("cdr", (parse_args "(x)", fun_cdr))
   ]
 
 
@@ -68,6 +74,46 @@ math_div a b = do
     (FloatLiteral a', FloatLiteral b') -> return $ FloatLiteral (a' / b')
     _ -> impossible
 
+fun_atomp :: Fun
+fun_atomp [(_, arg)] = return $ case arg of
+  DottedPair _ _ -> _false
+  _ -> _true
+fun_atomp _ = impossible
+
+fun_numberp :: Fun
+fun_numberp [(_, arg)] = return $ case arg of
+  IntegerLiteral _ -> _true
+  FloatLiteral _ -> _true
+  _ -> _false
+fun_numberp _ = impossible
+
+fun_listp :: Fun
+fun_listp [(_, arg)] = return $ case arg of
+  EmptyList -> _true
+  DottedPair _ _ -> _true
+  _ -> _false
+fun_listp _ = impossible
+
+fun_cons :: Fun
+fun_cons [(_, car), (_, cdr)] = return $ DottedPair car cdr
+fun_cons _ = impossible
+
+fun_car :: Fun
+fun_car [(_, arg)] = do
+  _is_list arg
+  return $ case arg of
+    DottedPair car _ -> car
+    _ -> EmptyList
+fun_car _ = impossible
+
+fun_cdr :: Fun
+fun_cdr [(_, arg)] = do
+  _is_list arg
+  return $ case arg of
+    DottedPair _ cdr -> cdr
+    _ -> EmptyList
+fun_cdr _ = impossible
+
 
 
 --
@@ -88,6 +134,11 @@ _is_number :: SExpr -> Eval ()
 _is_number (IntegerLiteral _) = return ()
 _is_number (FloatLiteral _) = return ()
 _is_number a = eval_error (show a ++ " is not a number")
+
+_is_list :: SExpr -> Eval ()
+_is_list EmptyList = return ()
+_is_list (DottedPair _ _) = return ()
+_is_list a = eval_error (show a ++ " is not a list")
 
 _math_binary :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
 _math_binary fi ff a b = do
