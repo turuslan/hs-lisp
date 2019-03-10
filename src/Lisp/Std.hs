@@ -32,7 +32,7 @@ fun_read_int _ = do
   str <- eval_read
   case reads str :: [(Integer, String)] of
     [(v, _)] -> return $ IntegerLiteral v
-    _ -> todo_runtime_error
+    _ -> eval_error ("substring " ++ show str ++ " does not have integer syntax at position 0")
 
 fun_print :: Fun
 fun_print [(_, arg)] = do

@@ -75,7 +75,7 @@ eval locals e = case e of
         mvar <- eval_var name
         case mvar of
           Just var -> return var
-          _ -> todo_runtime_error
+          _ -> eval_error ("variable " ++ name ++ " has no value")
   DottedPair (Atom name) aargs -> do
     case lookup name specials of
       Just (fargs, special) -> do
@@ -88,8 +88,8 @@ eval locals e = case e of
             aargs' <- eval_args locals aargs
             args <- get_args name fargs aargs'
             fun args
-          _ -> todo_runtime_error
-  DottedPair _ _ -> todo_runtime_error
+          _ -> eval_error ("undefined function " ++ name)
+  DottedPair car _ -> eval_error (show car ++ "is not a function name; try using a symbol instead")
   _ -> return e
 
 evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
@@ -162,9 +162,6 @@ special_setq _ _ = eval_error "TODO: MSG: var name must be symbol"
 
 
 
--- TODO: runtime error
-todo_runtime_error :: a
-todo_runtime_error = error "TODO"
 
 impossible :: a
 impossible = error "impossible"
