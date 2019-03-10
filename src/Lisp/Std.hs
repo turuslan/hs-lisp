@@ -13,6 +13,7 @@ initState = State [] []
   [ ("read-int", (parse_args "()", fun_read_int))
   , ("print", (parse_args "(x)", fun_print))
   , ("+", (parse_args "(&rest xs)", fun__plus))
+  , ("/", (parse_args "(num &rest xs)", fun__div))
   ]
 
 
@@ -34,6 +35,22 @@ fun_print _ = impossible
 fun__plus :: Fun
 fun__plus [(_, args)] = reduce (_math_binary (+) (+)) (IntegerLiteral 0) args
 fun__plus _ = impossible
+
+fun__div :: Fun
+fun__div [(_, num@(IntegerLiteral 1)), (_, EmptyList)] = return num
+fun__div [(_, num), (_, EmptyList)] = math_div (FloatLiteral 1) num
+fun__div [(_, num), (_, xs)] = reduce math_div num xs
+fun__div _ = impossible
+
+math_div :: SExpr -> SExpr -> Eval SExpr
+math_div a b = do
+  ab <- coerce a b
+  case ab of
+    (IntegerLiteral a', IntegerLiteral b') -> case divMod a' b' of
+      (i, 0) -> return $ IntegerLiteral i
+      _ -> return $ FloatLiteral (fromInteger a' / fromInteger b')
+    (FloatLiteral a', FloatLiteral b') -> return $ FloatLiteral (a' / b')
+    _ -> impossible
 
 
 
