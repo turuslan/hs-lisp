@@ -17,7 +17,7 @@ repl state = do
     _ ->
       case parseString input of
         exprs -> do
-          (state', result) <- evalIO state $ foldl (>>) (return EmptyList) $ map (eval []) exprs
+          (state', result) <- evalIO state $ foldl1 (>>) $ map (eval []) exprs
           case result of 
             Left v -> putStrLn $ show v
             Right (LispError err) -> putStrLn ("error: " ++ err)
