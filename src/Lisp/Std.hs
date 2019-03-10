@@ -60,7 +60,7 @@ coerce a@(IntegerLiteral _) b@(IntegerLiteral _) = return (a, b)
 coerce a@(FloatLiteral _) b@(FloatLiteral _) = return (a, b)
 coerce (IntegerLiteral a) b@(FloatLiteral _) = return (FloatLiteral $ fromInteger a, b)
 coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, FloatLiteral $ fromInteger b)
-coerce a b = eval_error (show (if is_number a then b else a) ++ " is not a number")
+coerce a b = _is_number a >> _is_number b >> return (EmptyList, EmptyList)
 
 reduce :: (SExpr -> SExpr -> Eval SExpr) -> SExpr -> SExpr -> Eval SExpr
 reduce f acc (DottedPair car cdr) = do
@@ -81,8 +81,6 @@ _is_number a = eval_error (show a ++ " is not a number")
 
 _math_binary :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
 _math_binary fi ff a b = do
-  _is_number a
-  _is_number b
   ab <- coerce a b
   case ab of
     (IntegerLiteral a', IntegerLiteral b') -> return $ IntegerLiteral $ fi a' b'
