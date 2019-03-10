@@ -5,6 +5,7 @@ import Lisp.Parser
 import Lisp.Std
 
 import System.IO
+import Control.Exception
 
 runRepl :: IO ()
 runRepl = repl initState
@@ -18,12 +19,19 @@ repl state = do
     ":q" -> return ()
     ":r" -> repl initState
     ':':'f':' ':path -> do
-      s <- readFile path
-      evalStr s
+      se <- try $ readFile path
+      case se of
+        Left e -> do
+          print (e :: IOError)
+          repl state
+        Right s -> evalStr s
     _ -> evalStr input
   where
-    evalStr s = case parseString s of
-      exprs -> do
+    evalStr s = case parseStringS s of
+      Left e -> do
+        putStrLn ("parse error: " ++ show e)
+        repl state
+      Right exprs -> do
         (state', result) <- evalIO state $ foldl1 (>>) $ map (eval []) exprs
         case result of 
           Left v -> putStrLn $ show v
