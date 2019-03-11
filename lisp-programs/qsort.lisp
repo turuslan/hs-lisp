@@ -34,4 +34,4 @@
 )
 
 ; start here
-(print (qsort (cons 1 (cons 5 (cons 3 (cons 8 (cons 2 (cons 0 nil))))))))
+(print (qsort (list 1 5 3 8 2 0 nil)))
