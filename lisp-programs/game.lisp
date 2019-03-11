@@ -17,16 +17,16 @@
     
     (let ((res (askToGuess)))
      
-		(cond
-			((< res x)
+		(if (< res x)
+			(seq
 				(print "Try greater value")
 				(play x)
 			)
-			((> res x)
-				(print "Try smaller value")
-				(play x)
-			)
-			((= res x)
+			(if (> res x)
+				(seq
+					(print "Try smaller value")
+					(play x)
+				)
 				(print "You are right!")
 			)
 		)
