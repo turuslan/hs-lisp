@@ -1,5 +1,7 @@
 module Lisp.Std where
 
+import Text.Read
+
 import Lisp.Ast
 import Lisp.Eval
 
@@ -29,6 +31,7 @@ initState = State [] []
   , ("null", (parse_args "(x)", fun_null))
   , ("first", (parse_args "(x)", fun_car))
   , ("rest", (parse_args "(x)", fun_cdr))
+  , ("parse-integer", (parse_args "(x)", fun_parse_integer))
   ]
 
 
@@ -172,6 +175,17 @@ fun_null [(_, arg)] = do
     EmptyList -> return $ _bool True
     _ -> return $ _bool False
 fun_null _ = impossible
+
+fun_parse_integer :: Fun
+fun_parse_integer [(_, arg)] = do
+  case arg of
+    StringLiteral s -> do
+      let n = readMaybe s :: Maybe Double
+      case n of
+        Nothing -> return $ EmptyList
+        Just n' -> return $ IntegerLiteral (floor n')
+    e -> eval_error (show e ++ " is not a string")
+fun_parse_integer _ = impossible
 
 --
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
