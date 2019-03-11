@@ -6,12 +6,12 @@
     
 )
 
-(defun askBethinkNumber ()
+(defun askBethinkNumber () (seq
 
     (print "Input number to be guessed: ")
     (read-int)
     
-)
+))
 
 (defun play (x)
     
@@ -33,11 +33,11 @@
 	)
 )
 
-(defun askToGuess ()
+(defun askToGuess () (seq
 
     (print "Try to guess the number: ")
     (read-int)
     
-)
+))
 
 (start)
