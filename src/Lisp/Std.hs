@@ -19,6 +19,9 @@ initState = State [] []
   , ("-", (parse_args "(num &rest xs)", fun__minus))
   , ("/", (parse_args "(num &rest xs)", fun__div))
   , ("=", (parse_args "(a b)", fun__eq))
+  , ("<", (parse_args "(a b)", fun__lt))
+  , (">", (parse_args "(a b)", fun__gt))
+  , (">=", (parse_args "(a b)", fun__ge))
   , ("atomp", (parse_args "(x)", fun_atomp))
   , ("numberp", (parse_args "(x)", fun_numberp))
   , ("listp", (parse_args "(x)", fun_listp))
@@ -83,6 +86,18 @@ fun__eq [(_, a), (_, b)] = do
     (FloatLiteral a', FloatLiteral b') -> return $ _bool (a' == b')
     _ -> impossible
 fun__eq _ = impossible
+
+fun__lt :: Fun
+fun__lt [(_, a), (_, b)] = _cmp (<) (<) a b
+fun__lt _ = impossible
+
+fun__gt :: Fun
+fun__gt [(_, a), (_, b)] = _cmp (>) (>) a b
+fun__gt _ = impossible
+
+fun__ge :: Fun
+fun__ge [(_, a), (_, b)] = _cmp (>=) (>=) a b
+fun__ge _ = impossible
 
 math_div :: SExpr -> SExpr -> Eval SExpr
 math_div a b = do
@@ -224,6 +239,14 @@ _math_binary fi ff a b = do
   case ab of
     (IntegerLiteral a', IntegerLiteral b') -> return $ IntegerLiteral $ fi a' b'
     (FloatLiteral a', FloatLiteral b') -> return $ FloatLiteral $ ff a' b'
+    _ -> impossible
+
+_cmp :: (Integer -> Integer -> Bool) -> (Double -> Double -> Bool) -> SExpr -> SExpr -> Eval SExpr
+_cmp fi ff a b = do
+  ab <- coerce a b
+  return $ _bool $ case ab of
+    (IntegerLiteral a', IntegerLiteral b') -> fi a' b'
+    (FloatLiteral a', FloatLiteral b') -> ff a' b'
     _ -> impossible
 
 _bool :: Bool -> SExpr
