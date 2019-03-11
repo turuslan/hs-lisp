@@ -31,7 +31,7 @@ initState = State [] []
   , ("null", (parse_args "(x)", fun_null))
   , ("first", (parse_args "(x)", fun_car))
   , ("rest", (parse_args "(x)", fun_cdr))
-  , ("parse-integer", (parse_args "(x)", fun_parse_integer))
+  , ("seq", (parse_args "(&rest xs)", fun_seq))
   ]
 
 
@@ -146,6 +146,13 @@ fun_floor [(_, arg)] = do
     FloatLiteral f -> IntegerLiteral $ floor f
     _ -> impossible
 fun_floor _ = impossible
+
+fun_seq :: Fun
+fun_seq [(_, xs)] = return $ last' xs where
+  last' (DottedPair x EmptyList) = x
+  last' (DottedPair _ xs') = last' xs'
+  last' _ = EmptyList
+fun_seq _ = impossible
 
 fun_append :: Fun
 fun_append [(_, args)] = concat' EmptyList (argsToArray args)
