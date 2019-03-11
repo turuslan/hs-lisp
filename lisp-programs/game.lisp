@@ -9,7 +9,7 @@
 (defun askBethinkNumber ()
 
     (print "Input number to be guessed: ")
-    (parse-integer (read-line))
+    (read-int)
     
 )
 
@@ -36,7 +36,7 @@
 (defun askToGuess ()
 
     (print "Try to guess the number: ")
-    (parse-integer (read-line))
+    (read-int)
     
 )
 
