@@ -45,30 +45,30 @@ instance Monad Eval where
 
   return v = Eval (\s -> (s, Left (Left v)))
 
-eval_read :: Eval String
-eval_read = e where
+evalRead :: Eval String
+evalRead = e where
   e = Eval (\s -> case sPendingInput s of
     [] -> (s, Right e)
     x:xs -> (s {sPendingInput = xs}, Left $ Left x))
 
-eval_write :: String -> Eval ()
-eval_write str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left $ Left ()))
+evalWrite :: String -> Eval ()
+evalWrite str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left $ Left ()))
 
-eval_writec :: String -> Eval ()
-eval_writec str = Eval (\s -> (
+evalWritec :: String -> Eval ()
+evalWritec str = Eval (\s -> (
   s {sPendingOutput = case sPendingOutput s of
     [] -> [str]
     prefix:lines' -> (prefix ++ str) : lines'},
   Left $ Left ()))
 
-eval_var :: String -> Eval (Maybe SExpr)
-eval_var name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
+evalVar :: String -> Eval (Maybe SExpr)
+evalVar name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
 
-eval_fun :: String -> Eval (Maybe (SExpr, Fun))
-eval_fun name = Eval (\s -> (s, Left $ Left $ lookup name $ sFuns s))
+evalFun :: String -> Eval (Maybe (SExpr, Fun))
+evalFun name = Eval (\s -> (s, Left $ Left $ lookup name $ sFuns s))
 
-eval_error :: String -> Eval a
-eval_error str = Eval (\s -> (s, Left $ Right $ LispError str))
+evalError :: String -> Eval a
+evalError str = Eval (\s -> (s, Left $ Right $ LispError str))
 
 
 
@@ -79,24 +79,24 @@ eval locals e = case e of
     case lookup name locals of
       Just var -> return var
       _ -> do
-        mvar <- eval_var name
+        mvar <- evalVar name
         case mvar of
           Just var -> return var
-          _ -> eval_error ("variable " ++ name ++ " has no value")
+          _ -> evalError ("variable " ++ name ++ " has no value")
   DottedPair (Atom name) aargs -> do
     case lookup name specials of
       Just (fargs, special) -> do
-        args <- get_args name fargs aargs
+        args <- getArgs name fargs aargs
         special locals args
       _ -> do
-        mfun <- eval_fun name
+        mfun <- evalFun name
         case mfun of
           Just (fargs, fun) -> do
-            aargs' <- eval_args locals aargs
-            args <- get_args name fargs aargs'
+            aargs' <- evalArgs locals aargs
+            args <- getArgs name fargs aargs'
             fun args
-          _ -> eval_error ("undefined function " ++ name)
-  DottedPair car _ -> eval_error (show car ++ "is not a function name; try using a symbol instead")
+          _ -> evalError ("undefined function " ++ name)
+  DottedPair car _ -> evalError (show car ++ "is not a function name; try using a symbol instead")
   _ -> return e
 
 evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
@@ -111,73 +111,73 @@ evalIO s (Eval c) = case c s of
   where
     flush s'' = (putStr $ unlines $ reverse $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
 
-eval_args :: Vars -> SExpr -> Eval SExpr
-eval_args locals (DottedPair car cdr) = do
+evalArgs :: Vars -> SExpr -> Eval SExpr
+evalArgs locals (DottedPair car cdr) = do
   car' <- eval locals car
-  cdr' <- eval_args locals cdr
+  cdr' <- evalArgs locals cdr
   return $ DottedPair car' cdr'
-eval_args _ _ = return EmptyList
+evalArgs _ _ = return EmptyList
 
-get_args :: String -> SExpr -> SExpr -> Eval Vars
-get_args _ EmptyList EmptyList = return []
-get_args fname EmptyList _ = eval_error ("too many arguments given to " ++ fname)
+getArgs :: String -> SExpr -> SExpr -> Eval Vars
+getArgs _ EmptyList EmptyList = return []
+getArgs fname EmptyList _ = evalError ("too many arguments given to " ++ fname)
 
-get_args _ (DottedPair (Atom "&optional") fargs) aargs = return $ get_opt fargs aargs where
-  get_opt (DottedPair (Atom aname) fcdr) EmptyList = (aname, EmptyList) : get_opt fcdr EmptyList
-  get_opt (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = (aname, acar) : get_opt fcdr acdr
-  get_opt _ _ = []
+getArgs _ (DottedPair (Atom "&optional") fargs) aargs = return $ getOpt fargs aargs where
+  getOpt (DottedPair (Atom aname) fcdr) EmptyList = (aname, EmptyList) : getOpt fcdr EmptyList
+  getOpt (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = (aname, acar) : getOpt fcdr acdr
+  getOpt _ _ = []
 
-get_args _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) aargs = return [(aname, aargs)]
-get_args fname (DottedPair (Atom "&rest") _) _ = eval_error ("TODO: MSG: bad &rest in " ++ fname)
+getArgs _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) aargs = return [(aname, aargs)]
+getArgs fname (DottedPair (Atom "&rest") _) _ = evalError ("TODO: MSG: bad &rest in " ++ fname)
 
-get_args fname (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = do
-  args <- get_args fname fcdr acdr
+getArgs fname (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = do
+  args <- getArgs fname fcdr acdr
   return ((aname, acar) : args)
-get_args fname (DottedPair _ _) _ = eval_error ("too few arguments given to " ++ fname)
+getArgs fname (DottedPair _ _) _ = evalError ("too few arguments given to " ++ fname)
 
-get_args fname _ _ = eval_error ("get_args " ++ fname ++ " not implemented")
+getArgs fname _ _ = evalError ("getArgs " ++ fname ++ " not implemented")
 
 
 
 --
 specials :: Lookup (SExpr, Special)
 specials =
-  [ ("if", (parse_args "(cnd then &optional else)", special_if))
-  , ("defun", (parse_args "(name args body)", special_defun))
-  , ("setq", (parse_args "(nane value)", special_setq))
-  , ("let", (parse_args "(vars body)", special_let))
+  [ ("if", (parseArgs "(cnd then &optional else)", lIf))
+  , ("defun", (parseArgs "(name args body)", lDefun))
+  , ("setq", (parseArgs "(nane value)", lSetq))
+  , ("let", (parseArgs "(vars body)", lLet))
   ]
 
-special_if :: Special
-special_if locals [(_, cnd), (_, then'), (_, else')] = do
+lIf :: Special
+lIf locals [(_, cnd), (_, then'), (_, else')] = do
   cnd' <- eval locals cnd
   case cnd' of
     EmptyList -> eval locals else'
     _ -> eval locals then'
-special_if _ _ = impossible
+lIf _ _ = impossible
 
-special_defun :: Special
-special_defun locals [(_, Atom name), (_, fargs), (_, body)] =
+lDefun :: Special
+lDefun locals [(_, Atom name), (_, fargs), (_, body)] =
   Eval (\s -> (s {sFuns = (name, (fargs, f)) : sFuns s}, Left $ Left $ Atom name))
     where f args = eval (locals ++ args) body
-special_defun _ _ = eval_error "TODO: MSG: function name must be symbol"
+lDefun _ _ = evalError "TODO: MSG: function name must be symbol"
 
-special_setq :: Special
-special_setq locals [(_, Atom name), (_, value)] = do
+lSetq :: Special
+lSetq locals [(_, Atom name), (_, value)] = do
   value' <- eval locals value
   Eval (\s -> (s {sVars = (name, value') : sVars s}, Left $ Left value'))
-special_setq _ _ = eval_error "TODO: MSG: var name must be symbol"
+lSetq _ _ = evalError "TODO: MSG: var name must be symbol"
 
-special_let :: Special
-special_let locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) EmptyList), (_, body)] = do
+lLet :: Special
+lLet locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) EmptyList), (_, body)] = do
   value' <- eval locals value
   eval ((name, value'):locals) body
-special_let _ _ = eval_error "TODO: special_let"
+lLet _ _ = evalError "TODO: lLet"
 
 
 
 impossible :: a
 impossible = error "impossible"
 
-parse_args :: String -> SExpr
-parse_args = head . parseString
+parseArgs :: String -> SExpr
+parseArgs = head . parseString
