@@ -3,6 +3,7 @@ module Lisp.Repl where
 import Lisp.Eval
 import Lisp.Parser
 import Lisp.Std
+import Lisp.JsCompiler
 
 import System.IO
 import Control.Exception
@@ -18,6 +19,9 @@ repl state = do
   case input of
     ":q" -> return ()
     ":r" -> repl initState
+    ':':'j':'s':' ':path -> do
+      jsBuild path
+      repl state
     ':':'f':' ':path -> do
       se <- try $ readFile path
       case se of
@@ -37,3 +41,22 @@ repl state = do
           Left v -> putStrLn $ show v
           Right (LispError err) -> putStrLn ("error: " ++ err)
         repl state'
+
+jsBuild :: String -> IO ()
+jsBuild path = do
+  base <- try $ readFile "nodejs.base.js"
+  case base of
+    Left e -> do
+      putStrLn "nodejs build target is missing"
+      print (e :: IOError)
+    Right jsBase -> do
+      src <- try $ readFile path
+      case src of
+        Left e -> print (e :: IOError)
+        Right s -> case jsCompileString s of
+          Left e -> putStrLn ("parse error: " ++ show e)
+          Right js -> do
+            writeFile out (jsBase ++ "\n" ++ js)
+            putStrLn ("successfully built " ++ out)
+  where
+    out = path ++ ".js"
