@@ -18,6 +18,6 @@
 (defun game ()
   (guess
     (seq (print "min (i): ") (read-int))
-    (+ (seq (print "max (i): ") (read-int)))))
+    (seq (print "max (i): ") (read-int))))
 
 (game)
