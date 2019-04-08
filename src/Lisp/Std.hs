@@ -7,7 +7,8 @@ import Lisp.Eval
 
 
 
---
+-- | Initial state.
+-- Constains standard declared functions and variables.
 initState :: State
 initState = State [] []
   [ ("nil", EmptyList)
@@ -39,7 +40,8 @@ initState = State [] []
 
 
 
---
+-- | Standard functions implementation.
+
 lReadInt :: Fun
 lReadInt _ = do
   str <- evalRead
@@ -209,7 +211,13 @@ lParseInteger [(_, arg)] = do
     e -> evalError (show e ++ " is not a string")
 lParseInteger _ = impossible
 
---
+
+
+-- | Utility functions.
+
+-- | Convert types of Lisp.Ast numbers to common type.
+-- Result is float if one of numbers if float.
+-- Required for arithmetic operations, but division is handled differently.
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
 coerce a@(IntegerLiteral _) b@(IntegerLiteral _) = return (a, b)
 coerce a@(FloatLiteral _) b@(FloatLiteral _) = return (a, b)
@@ -217,22 +225,28 @@ coerce (IntegerLiteral a) b@(FloatLiteral _) = return (FloatLiteral $ fromIntege
 coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, FloatLiteral $ fromInteger b)
 coerce a b = isNumber a >> isNumber b >> return (EmptyList, EmptyList)
 
+-- | Folds Lisp.Ast list.
 reduce :: (SExpr -> SExpr -> Eval SExpr) -> SExpr -> SExpr -> Eval SExpr
 reduce f acc (DottedPair car cdr) = do
   acc' <- f acc car
   reduce f acc' cdr
 reduce _ acc _ = return acc
 
+-- | Lisp.Ast number check assertion.
+-- Uses error of "Eval" monad.
 isNumber :: SExpr -> Eval ()
 isNumber (IntegerLiteral _) = return ()
 isNumber (FloatLiteral _) = return ()
 isNumber a = evalError (show a ++ " is not a number")
 
+-- | Lisp.Ast list check assertion.
+-- Uses error of "Eval" monad.
 isList :: SExpr -> Eval ()
 isList EmptyList = return ()
 isList (DottedPair _ _) = return ()
 isList a = evalError (show a ++ " is not a list")
 
+-- | Apply binary arithmetic operation to pair of Lisp.Ast numbers.
 numBinaryOp :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
 numBinaryOp fi ff a b = do
   ab <- coerce a b
@@ -241,6 +255,7 @@ numBinaryOp fi ff a b = do
     (FloatLiteral a', FloatLiteral b') -> return $ FloatLiteral $ ff a' b'
     _ -> impossible
 
+-- | Apply binary comparison operation to pair of Lisp.Ast numbers.
 compareOp :: (Integer -> Integer -> Bool) -> (Double -> Double -> Bool) -> SExpr -> SExpr -> Eval SExpr
 compareOp fi ff a b = do
   ab <- coerce a b

@@ -7,15 +7,19 @@ import Control.Monad (liftM, ap)
 
 
 
--- monad
+-- | Type to represent lookup collection with string keys.
 type Lookup a = [(String, a)]
 
+-- | Function accepts evaluated arguments and returns value.
 type Fun = Vars -> Eval SExpr
 
+-- | Spectial form accepts outer scope to manually evaluate arguments.
 type Special = Vars -> Fun
 
+-- | Variable name to value mapping.
 type Vars = Lookup SExpr
 
+-- | State for monad.
 data State = State
   { sPendingOutput :: [String]
   , sPendingInput :: [String]
@@ -26,8 +30,12 @@ data State = State
 instance Show State where
   show s = "State {sVars = " ++ show (sVars s) ++ ", sFuns = " ++ (show $ map fst $ sFuns s) ++ "}"
 
+-- | Error for monad.
 data LispError = LispError String deriving Show
 
+-- | Monad.
+-- When error occurs subsequent binds are ignored.
+-- When input is exhausted subsequent binds are accumulated for later evaluation.
 newtype Eval a = Eval (State -> (State, Either (Either a LispError) (Eval a)))
 
 instance Functor Eval where
@@ -45,15 +53,18 @@ instance Monad Eval where
 
   return v = Eval (\s -> (s, Left (Left v)))
 
+-- | Monad: read line from input.
 evalRead :: Eval String
 evalRead = e where
   e = Eval (\s -> case sPendingInput s of
     [] -> (s, Right e)
     x:xs -> (s {sPendingInput = xs}, Left $ Left x))
 
+-- | Monad: write line to output.
 evalWrite :: String -> Eval ()
 evalWrite str = Eval (\s -> (s {sPendingOutput = str : sPendingOutput s}, Left $ Left ()))
 
+-- | Monad: append text to last output line.
 evalWritec :: String -> Eval ()
 evalWritec str = Eval (\s -> (
   s {sPendingOutput = case sPendingOutput s of
@@ -61,18 +72,21 @@ evalWritec str = Eval (\s -> (
     prefix:lines' -> (prefix ++ str) : lines'},
   Left $ Left ()))
 
+-- | Monad: lookup variable.
 evalVar :: String -> Eval (Maybe SExpr)
 evalVar name = Eval (\s -> (s, Left $ Left $ lookup name $ sVars s))
 
+-- | Monad: lookup function.
 evalFun :: String -> Eval (Maybe (SExpr, Fun))
 evalFun name = Eval (\s -> (s, Left $ Left $ lookup name $ sFuns s))
 
+-- | Monad: raise error.
 evalError :: String -> Eval a
 evalError str = Eval (\s -> (s, Left $ Right $ LispError str))
 
 
 
---
+-- | Evaluare Lisp.Ast expression in specified scope.
 eval :: Vars -> SExpr -> Eval SExpr
 eval locals e = case e of
   Atom name -> do
@@ -99,6 +113,7 @@ eval locals e = case e of
   DottedPair car _ -> evalError (show car ++ "is not a function name; try using a symbol instead")
   _ -> return e
 
+-- | Run monad.
 evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
 evalIO s (Eval c) = case c s of
   (s', Left r) -> do
@@ -111,6 +126,7 @@ evalIO s (Eval c) = case c s of
   where
     flush s'' = (putStr $ unlines $ reverse $ sPendingOutput s'') >> return s'' {sPendingOutput = []}
 
+-- | Evaluate elements of Lisp.Ast list.
 evalArgs :: Vars -> SExpr -> Eval SExpr
 evalArgs locals (DottedPair car cdr) = do
   car' <- eval locals car
@@ -118,6 +134,7 @@ evalArgs locals (DottedPair car cdr) = do
   return $ DottedPair car' cdr'
 evalArgs _ _ = return EmptyList
 
+-- | Convert actual arguments ot formal using format from function declaration.
 getArgs :: String -> SExpr -> SExpr -> Eval Vars
 getArgs _ EmptyList EmptyList = return []
 getArgs fname EmptyList _ = evalError ("too many arguments given to " ++ fname)
@@ -139,7 +156,7 @@ getArgs fname _ _ = evalError ("getArgs " ++ fname ++ " not implemented")
 
 
 
---
+-- | Special forms.
 specials :: Lookup (SExpr, Special)
 specials =
   [ ("if", (parseArgs "(cnd then &optional else)", lIf))
@@ -147,6 +164,8 @@ specials =
   , ("setq", (parseArgs "(nane value)", lSetq))
   , ("let", (parseArgs "(vars body)", lLet))
   ]
+
+-- | Special forms implementation.
 
 lIf :: Special
 lIf locals [(_, cnd), (_, then'), (_, else')] = do
@@ -176,8 +195,12 @@ lLet _ _ = evalError "TODO: lLet"
 
 
 
+-- | Stub.
+-- Never executes.
+-- Used to avoid non-exhaustive pattern matching warnings.
 impossible :: a
 impossible = error "impossible"
 
+-- | Parse arguments format from lisp code.
 parseArgs :: String -> SExpr
 parseArgs = head . parseString

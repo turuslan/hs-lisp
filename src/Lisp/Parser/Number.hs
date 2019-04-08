@@ -7,10 +7,11 @@ import Text.Parsec.String
 
 
 
--- did not use `Text.ParsecCombinators.Parsec.Token.naturalOrFloat` because:
---   - does not handle sign;
---   - consumes whitespace after number;
---   - does not accept numbers like "1." and ".1";
+-- | Lisp number parser.
+-- Did not use `Text.ParsecCombinators.Parsec.Token.naturalOrFloat` because:
+-- * does not handle sign;
+-- * consumes whitespace after number;
+-- * does not accept numbers like "1." and ".1";
 number :: Parser SExpr
 number = do
   n <- intOrFloat

@@ -8,9 +8,18 @@ import Lisp.JsCompiler
 import System.IO
 import Control.Exception
 
+
+
+-- | Invoke repl loop with initial state.
 runRepl :: IO ()
 runRepl = repl initState
 
+-- | Repl loop iteration.
+-- Commands:
+-- * ":q" - quit repl.
+-- * ":r" - reset state to initial.
+-- * ":f <path>" - run "<path>" lisp file.
+-- * ":js <path>" - compile "<path>" lisp file to "<path>.js" js file.
 repl :: State -> IO ()
 repl state = do
   putStr "> "
@@ -42,6 +51,7 @@ repl state = do
           Right (LispError err) -> putStrLn ("error: " ++ err)
         repl state'
 
+-- | Compile lisp to js and save resulting file.
 jsBuild :: String -> IO ()
 jsBuild path = do
   base <- try $ readFile "nodejs.base.js"
