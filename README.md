@@ -1,10 +1,8 @@
-# project-template
+# hs-lisp
 
-[![Build Status](https://travis-ci.org/iu-haskell-spring-2019/project-template.svg?branch=master)](https://travis-ci.org/iu-haskell-spring-2019/project-template)
+Lisp interperter and compiler written in haskell.
 
-Template for a Haskell project.
-
-### Prerequisites
+## Prerequisites
 
 This project relies on the [Haskell Stack tool](https://docs.haskellstack.org/en/stable/README/).
 
@@ -64,33 +62,6 @@ trying out things.
 
 Note that you can run executable from GHCi by invoking `main`.
 
-### GHCi commands
-
-There are some useful commands in GHCi that might help
-you with the development process:
-
-- `:t` or `:type` — show the type of an expression:
-
-```
->>> :t map (+1)
-map (+1) :: Num b => [b] -> [b]
-```
-
-- `:l` or `:load` — load file or module:
-
-```
->>> :load src/MyProject.hs
-[1 of 1] Compiling MyProject        ( src/MyProject.hs, interpreted )
-Ok, one module loaded.
-```
-
-- `:set` and `:unset` — turn an option on/off:
-
-```
->>> :set -XOverloadedStrings
->>> :set -Wall -fno-warn-type-defaults
-```
-
 ## `ghcid`
 
 For faster feedback from the compiler it is recommended to use `ghcid`
@@ -111,12 +82,3 @@ ghcid -c "stack repl"
 This will run GHCi with the entire project loaded and will
 quickly reload all modules when you modify them to tell you
 if you have any errors or warnings.
-
-_Note: you can also run `ghcid` without parameters and it will detect
-Stack project, but you'll have to use system-wide `.ghci`.
-See [ndmitchell/ghcid#72](https://github.com/ndmitchell/ghcid/issues/72) for more details._
-
-Here's a sample development enviroment with a text editor (left),
-`ghcid` (top right) and `stack repl` (bottom right):
-
-![Vim + ghcid + stack repl](images/ghcid-demo.png)
