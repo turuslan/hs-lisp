@@ -2,6 +2,52 @@
 
 Lisp interperter and compiler written in haskell.
 
+## How to use
+Run program to open REPL.
+
+### REPL commands:
+- `:q` - stop REPL.
+- `:r` - reset REPL context.
+- `:f <file>` - evaluate lisp expressions from file.
+- `:js <file>` - compile lisp expressions from file to javascript.
+- *lisp expressions* - evaluate lisp expressions.
+
+### Sample lisp programs:
+- lisp-programs/bin-search.lisp - binary search sample.
+- lisp-programs/game.lisp - another binary search sample.
+
+### Supported special forms:
+- `if`
+- `defun`
+- `setq`
+- `let`
+
+### Supported lisp constants and functions:
+- `nil`
+- `read-int()`
+- `print(x)`
+- `princ(x)`
+- `+(&rest xs)`
+- `-(num &rest xs)`
+- `/(num &rest xs)`
+- `=(a b)`
+- `<(a b)`
+- `>(a b)`
+- `>=(a b)`
+- `atomp(x)`
+- `numberp(x)`
+- `listp(x)`
+- `cons(a b)`
+- `car(x)`
+- `cdr(x)`
+- `list(&rest xs)`
+- `floor(x)`
+- `append(&rest xs)`
+- `null(x)`
+- `first(x)`
+- `rest(x)`
+- `seq(&rest xs)`
+
 ## Prerequisites
 
 This project relies on the [Haskell Stack tool](https://docs.haskellstack.org/en/stable/README/).
