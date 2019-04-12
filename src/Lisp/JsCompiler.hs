@@ -26,7 +26,7 @@ flatList _ = error "?"
 
 -- | Name of global parameter.
 jscGlobal :: String
-jscGlobal = "global"
+jscGlobal = "_"
 
 -- | Generate js top-level function representing program for lisp top-level expressions.
 jscProgram :: [SExpr] -> String
@@ -70,11 +70,11 @@ jscExpr locals exprs@(DottedPair _ _) = case flatList exprs of
   [Atom "<", left, right] -> "(" ++ jscExpr locals left ++ ") < (" ++ jscExpr locals right ++ ")"
   [Atom ">", left, right] -> "(" ++ jscExpr locals left ++ ") > (" ++ jscExpr locals right ++ ")"
   (Atom "seq":xs) -> "(" ++ intercalate ",\n" (map (jscExpr locals) xs) ++ ")"
-  (Atom name:args) -> jscGlobal ++ "._get(\"" ++ name ++ "\")(" ++ intercalate ", " (map (jscExpr locals) args) ++ ")"
+  (name@(Atom _):args) -> jscExpr locals name ++ "(" ++ intercalate ", " (map (jscExpr locals) args) ++ ")"
   exprs2 -> "/* TODO: {" ++ show exprs2 ++ " in " ++ show locals ++ "} */"
 jscExpr locals (Atom name)
   | elem name locals = name
-  | otherwise = jscGlobal ++ "._get(\"" ++ name ++ "\")"
+  | otherwise = jscGlobal ++ "`" ++ name ++ "`"
 jscExpr _ (IntegerLiteral value) = show value
 jscExpr _ (StringLiteral value) = show value
 jscExpr locals expr = "/* TODO: {" ++ show expr ++ " with " ++ show locals ++ "} */"
@@ -83,7 +83,7 @@ jscExpr locals expr = "/* TODO: {" ++ show expr ++ " with " ++ show locals ++ "}
 -- "locals" passed down are extended with function arguments.
 jscFunc :: String -> [String] -> SExpr -> Locals -> String
 jscFunc name args body locals = unlines [
-  jscGlobal ++ "._def(\"" ++ name ++ "\",",
-  "(" ++ intercalate ", " args ++ ") => " ++ jscExpr (locals ++ args) body,
+  jscGlobal ++ ".set(`" ++ name ++ "`, (" ++ intercalate ", " args ++ ") => ",
+  jscExpr (locals ++ args) body,
   ")"
   ]

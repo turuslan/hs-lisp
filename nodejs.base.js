@@ -60,8 +60,18 @@ const SyncStdin = {
   },
 };
 
-program({
-  _global: {
+function make_global() {
+  function g([name]) {
+    if (name in g._global) {
+      return g._global[name];
+    } else {
+      throw new Error(`name "${name}" not found`);
+    }
+  }
+  g.set = (name, value) => {
+    g._global[name] = value;
+  };
+  g._global = {
     ['read-int']() {
       const value = +SyncStdin.getline();
       if (isNaN(value)) {
@@ -81,15 +91,8 @@ program({
     floor(x) {
       return Math.floor(x);
     },
-  },
-  _def(name, fn) {
-    this._global[name] = fn;
-  },
-  _get(name) {
-    if (name in this._global) {
-      return this._global[name];
-    } else {
-      throw new Error(`name "${name}" not found`);
-    }
-  },
-});
+  };
+  return g;
+}
+
+program(make_global());
