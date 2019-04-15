@@ -4,7 +4,7 @@ import Text.Read
 
 import Lisp.Ast
 import Lisp.Eval
-
+import Lisp.Errors
 
 
 --

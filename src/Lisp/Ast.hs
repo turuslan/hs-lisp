@@ -1,6 +1,6 @@
 module Lisp.Ast where
 
-
+import Lisp.Errors
 
 data SExpr
   = Atom String
@@ -20,7 +20,7 @@ instance Show SExpr where
   show xs'@(DottedPair _ _) = "(" ++ f xs' ++ ")"
     where
       f (DottedPair x xs) = show x ++ g xs
-      f _ = error "impossible"
+      f _ = impossible
       g EmptyList = ""
       g xs@(DottedPair _ _) = " " ++ f xs
       g x = " . " ++ show x

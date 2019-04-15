@@ -1,7 +1,8 @@
 module Lisp.Eval where
 
 import Lisp.Ast
-import Lisp.Parser (parseString)
+import Lisp.Parser (parseStringS)
+import Lisp.Errors
 
 import Control.Monad (liftM, ap)
 
@@ -25,8 +26,6 @@ data State = State
 
 instance Show State where
   show s = "State {sVars = " ++ show (sVars s) ++ ", sFuns = " ++ (show $ map fst $ sFuns s) ++ "}"
-
-data LispError = LispError String deriving Show
 
 newtype Eval a = Eval (State -> (State, Either (Either a LispError) (Eval a)))
 
@@ -175,9 +174,7 @@ lLet locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)
 lLet _ _ = evalError "TODO: lLet"
 
 
-
-impossible :: a
-impossible = error "impossible"
-
 parseArgs :: String -> SExpr
-parseArgs = head . parseString
+parseArgs s = case parseStringS s of
+    Left e -> customError (show e)
+    Right r -> head r

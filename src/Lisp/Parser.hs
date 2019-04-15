@@ -52,8 +52,3 @@ whileParser = whiteSpace >> sexprs
 
 parseStringS :: String -> Either ParseError [SExpr]
 parseStringS = parse whileParser ""
-
-parseString :: String -> [SExpr]
-parseString s = case parseStringS s of
-  Left e -> error $ show e
-  Right r -> r
