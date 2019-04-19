@@ -45,7 +45,7 @@ lReadInt _ = do
   str <- evalRead
   case reads str :: [(Integer, String)] of
     [(v, _)] -> return $ IntegerLiteral v
-    _ -> evalError ("substring " ++ show str ++ " does not have integer syntax at position 0")
+    _ -> evalError ("Substring '" ++ show str ++ "' does not have integer syntax at position 0")
 
 lPrint :: Fun
 lPrint [(_, arg)] = do
@@ -188,7 +188,7 @@ lAppend [(_, args)] = concat' EmptyList (argsToArray args)
       concat' (DottedPair car cdr) l = do 
         e' <- concat' cdr l
         return $ DottedPair car e'
-      concat' e _ = evalError (show e ++ " is not a list")
+      concat' e _ = evalError ("'" ++ show e ++ "' is not a list")
 lAppend _ = impossible
 
 lNull :: Fun
@@ -206,7 +206,7 @@ lParseInteger [(_, arg)] = do
       case n of
         Nothing -> return $ EmptyList
         Just n' -> return $ IntegerLiteral (floor n')
-    e -> evalError (show e ++ " is not a string")
+    e -> evalError ("'" ++ show e ++ "' is not a string")
 lParseInteger _ = impossible
 
 --
@@ -226,12 +226,12 @@ reduce _ acc _ = return acc
 isNumber :: SExpr -> Eval ()
 isNumber (IntegerLiteral _) = return ()
 isNumber (FloatLiteral _) = return ()
-isNumber a = evalError (show a ++ " is not a number")
+isNumber a = evalError ("'" ++ show a ++ "' is not a number")
 
 isList :: SExpr -> Eval ()
 isList EmptyList = return ()
 isList (DottedPair _ _) = return ()
-isList a = evalError (show a ++ " is not a list")
+isList a = evalError ("'" ++ show a ++ "' is not a list")
 
 numBinaryOp :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
 numBinaryOp fi ff a b = do

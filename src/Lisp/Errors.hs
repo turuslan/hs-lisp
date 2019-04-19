@@ -17,8 +17,19 @@ impossible = error $
 
 parseError :: ParseError -> String
 parseError e = (bgColor Red . color White . style Bold $ "Parse error:\n") ++
-    (color Red $ show e)
+    (colored $ show e)
 
 lispError :: LispError -> String
 lispError (LispError e) = (bgColor Red . color White . style Bold $ "Error:\n") ++
-    (color Red $ e)
+    (colored e)
+
+colored :: String -> String
+colored "" = "" 
+colored s = (red err) ++ (yellow bold) ++ colored rest
+        where
+            err = takeWhile (/= '\'') s
+            next = drop (1 + length err) s
+            bold = takeWhile (/= '\'') next
+            rest = drop (1 + length bold) next
+            red str = color Red $ str
+            yellow str = color Yellow . style Bold $ str

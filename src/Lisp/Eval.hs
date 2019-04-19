@@ -81,7 +81,7 @@ eval locals e = case e of
         mvar <- evalVar name
         case mvar of
           Just var -> return var
-          _ -> evalError ("variable " ++ name ++ " has no value")
+          _ -> evalError ("Variable '" ++ name ++ "' has no value")
   DottedPair (Atom name) aargs -> do
     case lookup name specials of
       Just (fargs, special) -> do
@@ -94,8 +94,8 @@ eval locals e = case e of
             aargs' <- evalArgs locals aargs
             args <- getArgs name fargs aargs'
             fun args
-          _ -> evalError ("undefined function " ++ name)
-  DottedPair car _ -> evalError (show car ++ "is not a function name; try using a symbol instead")
+          _ -> evalError ("Undefined function '" ++ name ++ "'")
+  DottedPair car _ -> evalError ("'" ++ show car ++ "' is not a function name; try using a symbol instead")
   _ -> return e
 
 evalIO :: State -> Eval SExpr -> IO (State, Either SExpr LispError)
@@ -119,7 +119,7 @@ evalArgs _ _ = return EmptyList
 
 getArgs :: String -> SExpr -> SExpr -> Eval Vars
 getArgs _ EmptyList EmptyList = return []
-getArgs fname EmptyList _ = evalError ("too many arguments given to " ++ fname)
+getArgs fname EmptyList _ = evalError ("Too many arguments given to '" ++ fname ++ "'")
 
 getArgs _ (DottedPair (Atom "&optional") fargs) aargs = return $ getOpt fargs aargs where
   getOpt (DottedPair (Atom aname) fcdr) EmptyList = (aname, EmptyList) : getOpt fcdr EmptyList
@@ -127,14 +127,14 @@ getArgs _ (DottedPair (Atom "&optional") fargs) aargs = return $ getOpt fargs aa
   getOpt _ _ = []
 
 getArgs _ (DottedPair (Atom "&rest") (DottedPair (Atom aname) EmptyList)) aargs = return [(aname, aargs)]
-getArgs fname (DottedPair (Atom "&rest") _) _ = evalError ("TODO: MSG: bad &rest in " ++ fname)
+getArgs fname (DottedPair (Atom "&rest") _) _ = evalError ("Wrong '&rest' arguments provided to '" ++ fname ++ "'")
 
 getArgs fname (DottedPair (Atom aname) fcdr) (DottedPair acar acdr) = do
   args <- getArgs fname fcdr acdr
   return ((aname, acar) : args)
-getArgs fname (DottedPair _ _) _ = evalError ("too few arguments given to " ++ fname)
+getArgs fname (DottedPair _ _) _ = evalError ("Too few arguments given to function '" ++ fname ++ "'")
 
-getArgs fname _ _ = evalError ("getArgs " ++ fname ++ " not implemented")
+getArgs fname _ _ = evalError ("getArgs '" ++ fname ++ "' not implemented")
 
 
 
@@ -159,19 +159,19 @@ lDefun :: Special
 lDefun locals [(_, Atom name), (_, fargs), (_, body)] =
   Eval (\s -> (s {sFuns = (name, (fargs, f)) : sFuns s}, Left $ Left $ Atom name))
     where f args = eval (locals ++ args) body
-lDefun _ _ = evalError "TODO: MSG: function name must be symbol"
+lDefun _ _ = evalError ("Function name provided to 'defun' must be identifier")
 
 lSetq :: Special
 lSetq locals [(_, Atom name), (_, value)] = do
   value' <- eval locals value
   Eval (\s -> (s {sVars = (name, value') : sVars s}, Left $ Left value'))
-lSetq _ _ = evalError "TODO: MSG: var name must be symbol"
+lSetq _ _ = evalError ("Variable name provided to 'set' must be identifier")
 
 lLet :: Special
 lLet locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) EmptyList), (_, body)] = do
   value' <- eval locals value
   eval ((name, value'):locals) body
-lLet _ _ = evalError "TODO: lLet"
+lLet _ _ = evalError ("No 'body' arguments provided to function 'let'")
 
 
 parseArgs :: String -> SExpr
