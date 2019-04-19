@@ -36,6 +36,8 @@ initState = State [] []
   , ("first", (parseArgs "(x)", lCar))
   , ("rest", (parseArgs "(x)", lCdr))
   , ("seq", (parseArgs "(&rest xs)", lSeq))
+  , ("map", (parseArgs "(&rest xs)", lMap))
+  , ("lookup", (parseArgs "(y x)", lLookup))
   ]
 
 
@@ -273,3 +275,47 @@ lTrue = IntegerLiteral 1
 
 lFalse :: SExpr
 lFalse = EmptyList
+
+-- | Internal method for converting DottedList to Haskel list or lisp map
+toMap :: SExpr -> [SExpr]
+toMap EmptyList = []
+toMap (DottedPair x xs) = x : toMap xs
+toMap x = [x]
+
+-- | Lisp.Ast Map check assertion.
+-- Uses error of "Eval" monad.
+isMap :: SExpr -> Eval ()
+isMap xs = do
+  isList xs
+  if length (toMap xs) `mod` 2 /= 0 
+    then evalError (show xs ++ " is not a map")
+    else return ()
+
+lMap :: Fun
+lMap [(_, args)] = check
+  where
+    ar = toMap args
+    check
+      | length ar `mod` 2 /= 0 = impossible
+      | otherwise = return args
+lMap _ = impossible
+
+findInMap :: SExpr -> [SExpr] -> SExpr
+findInMap key map = findRecursively map
+  where
+    findRecursively [] = EmptyList
+    findRecursively (k:v:xs)
+      | k == key = v
+      | otherwise = findRecursively xs
+    findRecursively xs = impossible
+
+lLookup :: Fun
+lLookup [(_, k), (_, args)] = look k args
+  where
+    look _ EmptyList = return EmptyList
+    look key lst = do
+      isMap lst
+      return $ findInMap key $ toMap lst
+
+-- Algorithms using map
+-- use hashmap
