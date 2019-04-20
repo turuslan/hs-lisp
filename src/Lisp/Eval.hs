@@ -89,15 +89,20 @@ findSuggestions :: String -> [String] -> [String]
 findSuggestions name fnames = filter (\n -> 2 > levDistance name n) fnames
 
 errorFunctionNotFound :: String -> Eval String
-errorFunctionNotFound name = do
+errorFunctionNotFound name = errUnknownIdentifier name "function" sFuns
+
+errorVariableNotFound :: String -> Eval String
+errorVariableNotFound name = errUnknownIdentifier name "variable" sVars
+
+errUnknownIdentifier :: String -> String -> (State -> Lookup a) -> Eval String
+errUnknownIdentifier name t locals = do
   s <- get
-  let names = map fst (sFuns s)
+  let names = map fst (locals s)
       suggestions = findSuggestions name names
   return $ unlines
-    [ "Unkown function '" ++ name ++ "'"
+    [ "Unkown " ++ t ++ " '" ++ name ++ "'"
     , "'Perhaps you meant one of these: " ++ unwords (map ("\n- "++) suggestions) ++ "'"
     ]
-
 
 
 --
@@ -110,7 +115,9 @@ eval locals e = case e of
         mvar <- evalVar name
         case mvar of
           Just var -> return var
-          _ -> evalError ("Variable '" ++ name ++ "' has no value")
+          _ -> do
+            msg <- errorVariableNotFound name
+            evalError msg
   DottedPair (Atom name) aargs -> do
     case lookup name specials of
       Just (fargs, special) -> do
