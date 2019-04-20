@@ -48,7 +48,11 @@ sexpr =
       return $ DottedPair car cdr
 
 whileParser :: Parser [SExpr]
-whileParser = whiteSpace >> sexprs
+whileParser = do 
+  whiteSpace
+  es <- sexprs
+  eof
+  return es
 
 parseStringS :: String -> Either ParseError [SExpr]
 parseStringS = parse whileParser ""

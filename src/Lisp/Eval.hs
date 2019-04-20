@@ -99,9 +99,12 @@ errUnknownIdentifier name t locals = do
   s <- get
   let names = map fst (locals s)
       suggestions = findSuggestions name names
+      sMsg = case (length suggestions) of
+        0 -> "No suggestions."
+        _ -> "'Perhaps you meant one of these: " ++ unwords (map ("\n- "++) suggestions) ++ "'."
   return $ unlines
-    [ "Unkown " ++ t ++ " '" ++ name ++ "'"
-    , "'Perhaps you meant one of these: " ++ unwords (map ("\n- "++) suggestions) ++ "'"
+    [ "Unkown " ++ t ++ " '" ++ name ++ "'."
+    , sMsg
     ]
 
 
