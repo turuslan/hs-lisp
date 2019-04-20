@@ -71,6 +71,35 @@ evalError str = Eval (\s -> (s, Left $ Right $ LispError str))
 
 
 
+
+get :: Eval State
+get = Eval (\s -> (s, Left (Left s)))
+
+levDistance :: String -> String -> Int
+levDistance "" "" = 0
+levDistance "" ys = length ys
+levDistance xs "" = length xs
+levDistance (x:xs) (y:ys)
+  | x == y    = levDistance xs ys
+  | otherwise = 1 + minimum [levDistance xs (y:ys)
+                            , levDistance (x:xs) ys
+                            , levDistance xs ys]
+
+findSuggestions :: String -> [String] -> [String]
+findSuggestions name fnames = filter (\n -> 2 > levDistance name n) fnames
+
+errorFunctionNotFound :: String -> Eval String
+errorFunctionNotFound name = do
+  s <- get
+  let names = map fst (sFuns s)
+      suggestions = findSuggestions name names
+  return $ unlines
+    [ "Unkown function '" ++ name ++ "'"
+    , "'Perhaps you meant one of these: " ++ unwords (map ("\n- "++) suggestions) ++ "'"
+    ]
+
+
+
 --
 eval :: Vars -> SExpr -> Eval SExpr
 eval locals e = case e of
@@ -94,7 +123,9 @@ eval locals e = case e of
             aargs' <- evalArgs locals aargs
             args <- getArgs name fargs aargs'
             fun args
-          _ -> evalError ("Undefined function '" ++ name ++ "'")
+          _ -> do
+            msg <- errorFunctionNotFound name
+            evalError msg
   DottedPair car _ -> evalError ("'" ++ show car ++ "' is not a function name; try using a symbol instead")
   _ -> return e
 

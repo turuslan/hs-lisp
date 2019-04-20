@@ -16,12 +16,13 @@ impossible = error $
     "Something went wrong. Impossible program state."
 
 parseError :: ParseError -> String
-parseError e = (bgColor Red . color White . style Bold $ "Parse error:\n") ++
-    (colored $ show e)
+parseError e = (headerErr "Parse error:\n") ++ (colored $ show e)
 
 lispError :: LispError -> String
-lispError (LispError e) = (bgColor Red . color White . style Bold $ "Error:\n") ++
-    (colored e)
+lispError (LispError e) = (headerErr "Error:\n") ++ (colored e)
+
+headerErr :: String -> String
+headerErr s = bgColor Red . color White . style Bold $ s
 
 colored :: String -> String
 colored "" = "" 
