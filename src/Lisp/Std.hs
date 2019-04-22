@@ -1,6 +1,7 @@
 module Lisp.Std where
 
 import Text.Read
+import Data.Maybe
 
 import Lisp.Ast
 import Lisp.Eval
@@ -38,6 +39,8 @@ initState = State [] []
   , ("seq", (parseArgs "(&rest xs)", lSeq))
   , ("map", (parseArgs "(&rest xs)", lMap))
   , ("lookup", (parseArgs "(y x)", lLookup))
+  , ("put", (parseArgs "(k v x)", lPutToMap))
+  , ("removeKey", (parseArgs "(k x)", lRemoveKey))
   ]
 
 
@@ -49,7 +52,9 @@ lReadInt _ = do
   str <- evalRead
   case reads str :: [(Integer, String)] of
     [(v, _)] -> return $ IntegerLiteral v
-    _ -> evalError ("substring " ++ show str ++ " does not have integer syntax at position 0")
+    _ -> evalError ("substring " 
+      ++ show str 
+      ++ " does not have integer syntax at position 0")
 
 lPrint :: Fun
 lPrint [(_, arg)] = do
@@ -179,7 +184,7 @@ lAppend [(_, args)] = concat' EmptyList (argsToArray args)
       argsToArray :: SExpr -> [SExpr]
       argsToArray EmptyList = [EmptyList]
       argsToArray (DottedPair car EmptyList) = [car]
-      argsToArray (DottedPair car cdr) = (car : argsToArray cdr)
+      argsToArray (DottedPair car cdr) = car : argsToArray cdr
       argsToArray e = [e]
 
       concat' :: SExpr -> [SExpr] -> Eval SExpr
@@ -223,8 +228,10 @@ lParseInteger _ = impossible
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
 coerce a@(IntegerLiteral _) b@(IntegerLiteral _) = return (a, b)
 coerce a@(FloatLiteral _) b@(FloatLiteral _) = return (a, b)
-coerce (IntegerLiteral a) b@(FloatLiteral _) = return (FloatLiteral $ fromInteger a, b)
-coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, FloatLiteral $ fromInteger b)
+coerce (IntegerLiteral a) b@(FloatLiteral _) = 
+  return (FloatLiteral $ fromInteger a, b)
+coerce a@(FloatLiteral _) (IntegerLiteral b) = 
+  return (a, FloatLiteral $ fromInteger b)
 coerce a b = isNumber a >> isNumber b >> return (EmptyList, EmptyList)
 
 -- | Folds Lisp.Ast list.
@@ -249,7 +256,10 @@ isList (DottedPair _ _) = return ()
 isList a = evalError (show a ++ " is not a list")
 
 -- | Apply binary arithmetic operation to pair of Lisp.Ast numbers.
-numBinaryOp :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
+numBinaryOp 
+  :: (Integer -> Integer -> Integer)
+  -> (Double -> Double -> Double)
+  -> SExpr -> SExpr -> Eval SExpr
 numBinaryOp fi ff a b = do
   ab <- coerce a b
   case ab of
@@ -258,7 +268,10 @@ numBinaryOp fi ff a b = do
     _ -> impossible
 
 -- | Apply binary comparison operation to pair of Lisp.Ast numbers.
-compareOp :: (Integer -> Integer -> Bool) -> (Double -> Double -> Bool) -> SExpr -> SExpr -> Eval SExpr
+compareOp 
+  :: (Integer -> Integer -> Bool) 
+  -> (Double -> Double -> Bool)
+  -> SExpr -> SExpr -> Eval SExpr
 compareOp fi ff a b = do
   ab <- coerce a b
   return $ lBool $ case ab of
@@ -277,45 +290,78 @@ lFalse :: SExpr
 lFalse = EmptyList
 
 -- | Internal method for converting DottedList to Haskel list or lisp map
-toMap :: SExpr -> [SExpr]
-toMap EmptyList = []
-toMap (DottedPair x xs) = x : toMap xs
-toMap x = [x]
+toHsList :: SExpr -> [SExpr]
+toHsList EmptyList = []
+toHsList (DottedPair x xs) = x : toHsList xs
+toHsList x = [x]
 
 -- | Lisp.Ast Map check assertion.
 -- Uses error of "Eval" monad.
 isMap :: SExpr -> Eval ()
 isMap xs = do
   isList xs
-  if length (toMap xs) `mod` 2 /= 0 
+  if length (toHsList xs) `mod` 2 /= 0 
     then evalError (show xs ++ " is not a map")
     else return ()
 
+-- | Lisp Map constructor
 lMap :: Fun
-lMap [(_, args)] = check
-  where
-    ar = toMap args
-    check
-      | length ar `mod` 2 /= 0 = impossible
-      | otherwise = return args
+lMap [(_, args)] = do
+  isMap args
+  return args
 lMap _ = impossible
 
-findInMap :: SExpr -> [SExpr] -> SExpr
-findInMap key map = findRecursively map
+-- | Internal function for searching within lisp map
+findInMap :: SExpr -> [SExpr] -> Maybe SExpr
+findInMap key = findRecursively
   where
-    findRecursively [] = EmptyList
+    findRecursively [] = Nothing
     findRecursively (k:v:xs)
-      | k == key = v
+      | k == key = Just v
       | otherwise = findRecursively xs
-    findRecursively xs = impossible
+    findRecursively _ = impossible
 
-lLookup :: Fun
-lLookup [(_, k), (_, args)] = look k args
+-- | Internal function for inserting to lisp map
+insertToMap :: SExpr -> SExpr -> [SExpr] -> SExpr
+insertToMap key newVal mp = toLispList $ insertRec mp
   where
-    look _ EmptyList = return EmptyList
-    look key lst = do
-      isMap lst
-      return $ findInMap key $ toMap lst
+    insertRec [] = [key, newVal]
+    insertRec (k:v:xs)
+      | k == key = k:newVal:xs
+      | otherwise = k:v:insertRec xs
+    insertRec _ = impossible
 
--- Algorithms using map
--- use hashmap
+removeFromMap :: SExpr -> [SExpr] -> SExpr
+removeFromMap key mp = toLispList $ removeRec mp
+  where
+    removeRec [] = []
+    removeRec (k:v:xs)
+      | k == key = xs
+      | otherwise = k:v:removeRec xs
+    removeRec _ = impossible
+
+-- | Internal function to converting haskell list to lisp list
+toLispList :: [SExpr] -> SExpr
+toLispList = foldr DottedPair EmptyList
+
+-- | Lisp 'lookup' function implementation for lisp map.
+-- Finds value by 'key' or returns EmptyList
+lLookup :: Fun
+lLookup [(_, k), (_, args)] = look args
+  where
+    look EmptyList = return EmptyList
+    look lst = do
+      isMap lst
+      return $ fromMaybe EmptyList (findInMap k $ toHsList lst)
+
+-- | Lisp 'put' function implementation.
+lPutToMap :: Fun
+lPutToMap [(_, k), (_, v), (_, mp)] = do
+  isMap mp
+  return $ insertToMap k v $ toHsList mp
+
+-- | Lisp 'removeKey' function implementation
+lRemoveKey :: Fun
+lRemoveKey [(_, k), (_, mp)] = do
+    isMap mp
+    return $ removeFromMap k $ toHsList mp
