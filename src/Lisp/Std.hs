@@ -15,6 +15,8 @@ initState = State [] []
   [ ("nil", EmptyList)
   ]
   [ ("read-int", (parseArgs "()", lReadInt))
+  , ("read", (parseArgs "()", lReadStr))
+  , ("concat", (parseArgs "(x y)", lConcat))
   , ("print", (parseArgs "(x)", lPrint))
   , ("princ", (parseArgs "(x)", lPrinc))
   , ("+", (parseArgs "(&rest xs)", lPlus))
@@ -56,6 +58,11 @@ lReadInt _ = do
       ++ show str 
       ++ " does not have integer syntax at position 0")
 
+lReadStr :: Fun
+lReadStr _ = do
+  str <- evalRead
+  return $ StringLiteral str
+
 lPrint :: Fun
 lPrint [(_, arg)] = do
   evalWrite $ showE arg
@@ -71,6 +78,12 @@ lPrinc _ = impossible
 showE :: SExpr -> String
 showE (StringLiteral s) = s
 showE e = show e
+
+lConcat :: Fun
+lConcat [(_, a), (_, b)] = return $ concat a b
+  where
+    concat (StringLiteral s1) (StringLiteral s2) = StringLiteral (s1 ++ s2)
+    concat _ _ = EmptyList
 
 lPlus :: Fun
 lPlus [(_, args)] = reduce (numBinaryOp (+) (+)) (IntegerLiteral 0) args
@@ -89,10 +102,14 @@ lMinus _ = impossible
 
 lEq :: Fun
 lEq [(_, a), (_, b)] = do
-  ab <- coerce a b
-  case ab of
-    (IntegerLiteral a', IntegerLiteral b') -> return $ lBool (a' == b')
-    (FloatLiteral a', FloatLiteral b') -> return $ lBool (a' == b')
+  case (a, b) of
+    (StringLiteral a', StringLiteral b') -> return $ lBool (a' == b')
+    _ -> do
+      ab <- coerce a b
+      case ab of
+        (IntegerLiteral a', IntegerLiteral b') -> return $ lBool (a' == b')
+        (FloatLiteral a', FloatLiteral b') -> return $ lBool (a' == b')
+        (StringLiteral a', StringLiteral b') -> return $ lBool (a' == b')
     _ -> impossible
 lEq _ = impossible
 
