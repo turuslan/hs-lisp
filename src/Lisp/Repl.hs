@@ -30,11 +30,11 @@ repl state = do
   where
     evalStr s = case parseStringS s of
       Left e -> do
-        putStrLn (parseError e)
+        putStrLn (parseError e s)
         repl state
       Right exprs -> do
         (state', result) <- evalIO state $ foldl1 (>>) $ map (eval []) exprs
         case result of 
           Left v -> putStrLn $ show v
-          Right e -> putStrLn (lispError e)
+          Right e -> putStrLn (lispError e s)
         repl state'
