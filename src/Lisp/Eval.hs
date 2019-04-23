@@ -4,6 +4,7 @@ import Lisp.Ast
 import Lisp.Parser (parseString)
 
 import Control.Monad (liftM, ap)
+import Data.Typeable
 
 
 
@@ -191,6 +192,10 @@ lLet :: Special
 lLet locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) EmptyList), (_, body)] = do
   value' <- eval locals value
   eval ((name, value'):locals) body
+lLet locals [(_, DottedPair (DottedPair (Atom name) (DottedPair value EmptyList)) ( DottedPair (DottedPair (Atom name1) (DottedPair value1 EmptyList)) EmptyList) ), (_, body)] = do
+  value' <- eval locals value
+  value1' <- eval locals value1
+  eval ((name, value'):(name1, value1'):locals) body
 lLet _ _ = evalError "TODO: lLet"
 
 

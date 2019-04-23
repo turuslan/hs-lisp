@@ -12,7 +12,9 @@ import Control.Exception
 
 -- | Invoke repl loop with initial state.
 runRepl :: IO ()
-runRepl = repl initState
+runRepl = do
+  hSetBuffering stdin LineBuffering
+  repl initState
 
 -- | Repl loop iteration.
 -- Commands:

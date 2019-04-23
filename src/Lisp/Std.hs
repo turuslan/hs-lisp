@@ -1,6 +1,8 @@
 module Lisp.Std where
 
 import Text.Read
+import Data.Maybe
+import Data.List.Split
 
 import Lisp.Ast
 import Lisp.Eval
@@ -14,6 +16,8 @@ initState = State [] []
   [ ("nil", EmptyList)
   ]
   [ ("read-int", (parseArgs "()", lReadInt))
+  , ("read", (parseArgs "()", lReadStr))
+  , ("concat", (parseArgs "(x y)", lConcat))
   , ("print", (parseArgs "(x)", lPrint))
   , ("princ", (parseArgs "(x)", lPrinc))
   , ("+", (parseArgs "(&rest xs)", lPlus))
@@ -36,6 +40,11 @@ initState = State [] []
   , ("first", (parseArgs "(x)", lCar))
   , ("rest", (parseArgs "(x)", lCdr))
   , ("seq", (parseArgs "(&rest xs)", lSeq))
+  , ("map", (parseArgs "(&rest xs)", lMap))
+  , ("lookup", (parseArgs "(y x)", lLookup))
+  , ("put", (parseArgs "(k v x)", lPutToMap))
+  , ("removeKey", (parseArgs "(k x)", lRemoveKey))
+  , ("split", (parseArgs "(d s)", lSplit))
   ]
 
 
@@ -47,7 +56,14 @@ lReadInt _ = do
   str <- evalRead
   case reads str :: [(Integer, String)] of
     [(v, _)] -> return $ IntegerLiteral v
-    _ -> evalError ("substring " ++ show str ++ " does not have integer syntax at position 0")
+    _ -> evalError ("substring " 
+      ++ show str 
+      ++ " does not have integer syntax at position 0")
+
+lReadStr :: Fun
+lReadStr _ = do
+  str <- evalRead
+  return $ StringLiteral str
 
 lPrint :: Fun
 lPrint [(_, arg)] = do
@@ -64,6 +80,12 @@ lPrinc _ = impossible
 showE :: SExpr -> String
 showE (StringLiteral s) = s
 showE e = show e
+
+lConcat :: Fun
+lConcat [(_, a), (_, b)] = return $ concat a b
+  where
+    concat (StringLiteral s1) (StringLiteral s2) = StringLiteral (s1 ++ s2)
+    concat _ _ = EmptyList
 
 lPlus :: Fun
 lPlus [(_, args)] = reduce (numBinaryOp (+) (+)) (IntegerLiteral 0) args
@@ -82,10 +104,14 @@ lMinus _ = impossible
 
 lEq :: Fun
 lEq [(_, a), (_, b)] = do
-  ab <- coerce a b
-  case ab of
-    (IntegerLiteral a', IntegerLiteral b') -> return $ lBool (a' == b')
-    (FloatLiteral a', FloatLiteral b') -> return $ lBool (a' == b')
+  case (a, b) of
+    (StringLiteral a', StringLiteral b') -> return $ lBool (a' == b')
+    _ -> do
+      ab <- coerce a b
+      case ab of
+        (IntegerLiteral a', IntegerLiteral b') -> return $ lBool (a' == b')
+        (FloatLiteral a', FloatLiteral b') -> return $ lBool (a' == b')
+        (StringLiteral a', StringLiteral b') -> return $ lBool (a' == b')
     _ -> impossible
 lEq _ = impossible
 
@@ -177,7 +203,7 @@ lAppend [(_, args)] = concat' EmptyList (argsToArray args)
       argsToArray :: SExpr -> [SExpr]
       argsToArray EmptyList = [EmptyList]
       argsToArray (DottedPair car EmptyList) = [car]
-      argsToArray (DottedPair car cdr) = (car : argsToArray cdr)
+      argsToArray (DottedPair car cdr) = car : argsToArray cdr
       argsToArray e = [e]
 
       concat' :: SExpr -> [SExpr] -> Eval SExpr
@@ -221,8 +247,10 @@ lParseInteger _ = impossible
 coerce :: SExpr -> SExpr -> Eval (SExpr, SExpr)
 coerce a@(IntegerLiteral _) b@(IntegerLiteral _) = return (a, b)
 coerce a@(FloatLiteral _) b@(FloatLiteral _) = return (a, b)
-coerce (IntegerLiteral a) b@(FloatLiteral _) = return (FloatLiteral $ fromInteger a, b)
-coerce a@(FloatLiteral _) (IntegerLiteral b) = return (a, FloatLiteral $ fromInteger b)
+coerce (IntegerLiteral a) b@(FloatLiteral _) = 
+  return (FloatLiteral $ fromInteger a, b)
+coerce a@(FloatLiteral _) (IntegerLiteral b) = 
+  return (a, FloatLiteral $ fromInteger b)
 coerce a b = isNumber a >> isNumber b >> return (EmptyList, EmptyList)
 
 -- | Folds Lisp.Ast list.
@@ -247,7 +275,10 @@ isList (DottedPair _ _) = return ()
 isList a = evalError (show a ++ " is not a list")
 
 -- | Apply binary arithmetic operation to pair of Lisp.Ast numbers.
-numBinaryOp :: (Integer -> Integer -> Integer) -> (Double -> Double -> Double) -> SExpr -> SExpr -> Eval SExpr
+numBinaryOp 
+  :: (Integer -> Integer -> Integer)
+  -> (Double -> Double -> Double)
+  -> SExpr -> SExpr -> Eval SExpr
 numBinaryOp fi ff a b = do
   ab <- coerce a b
   case ab of
@@ -256,7 +287,10 @@ numBinaryOp fi ff a b = do
     _ -> impossible
 
 -- | Apply binary comparison operation to pair of Lisp.Ast numbers.
-compareOp :: (Integer -> Integer -> Bool) -> (Double -> Double -> Bool) -> SExpr -> SExpr -> Eval SExpr
+compareOp 
+  :: (Integer -> Integer -> Bool) 
+  -> (Double -> Double -> Bool)
+  -> SExpr -> SExpr -> Eval SExpr
 compareOp fi ff a b = do
   ab <- coerce a b
   return $ lBool $ case ab of
@@ -273,3 +307,91 @@ lTrue = IntegerLiteral 1
 
 lFalse :: SExpr
 lFalse = EmptyList
+
+-- | Implementation of split command
+lSplit :: Fun
+lSplit [(_, d), (_, s)] = split d s
+  where
+    split (StringLiteral d) (StringLiteral s) = 
+      return
+        $ toLispList 
+        $ map StringLiteral 
+        $ splitOn d s
+    split _ _ = evalError "split can be applied only to strings"
+
+-- | Internal method for converting DottedList to Haskel list or lisp map
+toHsList :: SExpr -> [SExpr]
+toHsList EmptyList = []
+toHsList (DottedPair x xs) = x : toHsList xs
+toHsList x = [x]
+
+-- | Lisp.Ast Map check assertion.
+-- Uses error of "Eval" monad.
+isMap :: SExpr -> Eval ()
+isMap xs = do
+  isList xs
+  if length (toHsList xs) `mod` 2 /= 0 
+    then evalError (show xs ++ " is not a map")
+    else return ()
+
+-- | Lisp Map constructor
+lMap :: Fun
+lMap [(_, args)] = do
+  isMap args
+  return args
+lMap _ = impossible
+
+-- | Internal function for searching within lisp map
+findInMap :: SExpr -> [SExpr] -> Maybe SExpr
+findInMap key = findRecursively
+  where
+    findRecursively [] = Nothing
+    findRecursively (k:v:xs)
+      | k == key = Just v
+      | otherwise = findRecursively xs
+    findRecursively _ = impossible
+
+-- | Internal function for inserting to lisp map
+insertToMap :: SExpr -> SExpr -> [SExpr] -> SExpr
+insertToMap key newVal mp = toLispList $ insertRec mp
+  where
+    insertRec [] = [key, newVal]
+    insertRec (k:v:xs)
+      | k == key = k:newVal:xs
+      | otherwise = k:v:insertRec xs
+    insertRec _ = impossible
+
+removeFromMap :: SExpr -> [SExpr] -> SExpr
+removeFromMap key mp = toLispList $ removeRec mp
+  where
+    removeRec [] = []
+    removeRec (k:v:xs)
+      | k == key = xs
+      | otherwise = k:v:removeRec xs
+    removeRec _ = impossible
+
+-- | Internal function to converting haskell list to lisp list
+toLispList :: [SExpr] -> SExpr
+toLispList = foldr DottedPair EmptyList
+
+-- | Lisp 'lookup' function implementation for lisp map.
+-- Finds value by 'key' or returns EmptyList
+lLookup :: Fun
+lLookup [(_, k), (_, args)] = look args
+  where
+    look EmptyList = return EmptyList
+    look lst = do
+      isMap lst
+      return $ fromMaybe EmptyList (findInMap k $ toHsList lst)
+
+-- | Lisp 'put' function implementation.
+lPutToMap :: Fun
+lPutToMap [(_, k), (_, v), (_, mp)] = do
+  isMap mp
+  return $ insertToMap k v $ toHsList mp
+
+-- | Lisp 'removeKey' function implementation
+lRemoveKey :: Fun
+lRemoveKey [(_, k), (_, mp)] = do
+    isMap mp
+    return $ removeFromMap k $ toHsList mp
