@@ -2,6 +2,7 @@ module Lisp.Std where
 
 import Text.Read
 import Data.Maybe
+import Data.List.Split
 
 import Lisp.Ast
 import Lisp.Eval
@@ -43,6 +44,7 @@ initState = State [] []
   , ("lookup", (parseArgs "(y x)", lLookup))
   , ("put", (parseArgs "(k v x)", lPutToMap))
   , ("removeKey", (parseArgs "(k x)", lRemoveKey))
+  , ("split", (parseArgs "(d s)", lSplit))
   ]
 
 
@@ -305,6 +307,17 @@ lTrue = IntegerLiteral 1
 
 lFalse :: SExpr
 lFalse = EmptyList
+
+-- | Implementation of split command
+lSplit :: Fun
+lSplit [(_, d), (_, s)] = split d s
+  where
+    split (StringLiteral d) (StringLiteral s) = 
+      return
+        $ toLispList 
+        $ map StringLiteral 
+        $ splitOn d s
+    split _ _ = evalError "split can be applied only to strings"
 
 -- | Internal method for converting DottedList to Haskel list or lisp map
 toHsList :: SExpr -> [SExpr]
