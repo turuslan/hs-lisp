@@ -13,7 +13,6 @@
         (let (
             (command (car line))
             (args (cdr line)))
-            ;; (print "kek")
             (if (= "put" command)
                 (let (
                         (key (car args))
@@ -40,7 +39,6 @@
             )
 
         )
-        ;; (if (= command "put"))
     )
 
 )
