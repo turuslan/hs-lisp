@@ -12,20 +12,32 @@ customError :: String -> a
 customError s = error $ color Red s
 
 parseError :: ParseError -> String -> String
-parseError e source = (headerErr "Parse error:\n") ++ (colored $ show e)
-    ++ "\n" ++ (ppSourceCode source pos)
+parseError e source = errorString (show e) pos source
     where
         pos = Pos (errorPos e) (errorPos e)
 
 lispError :: LispError -> String -> String
-lispError (LispError pos e) source = (headerErr "Error:\n") ++ "'" ++ (show pos) ++ "'" ++ (colored e) 
-    ++ "\n" ++ (ppSourceCode source pos)
+lispError (LispError pos e) source = errorString e pos source
+
+errorString :: String -> Pos -> String -> String
+errorString msg pos@(Pos p1 _) source = unlines
+    [ headerErr "Error:"
+    , (show p1) 
+    , "'" ++ (colored msg) ++ "'" 
+    , ppSourceCode source pos
+    ]
 
 ppSourceCode :: String -> Pos -> String
-ppSourceCode source (Pos start end) = unlines $ drop (startLineN - 1) $ take endLineN $ lines source
+ppSourceCode source (Pos start end) = unlines $ zipWith (++) lineNums linesForShow
     where 
+        lineNums = map lineNoStr [startLineN..endLineN]
+        linesForShow = drop (startLineN - 1) $ take endLineN $ lines source
         startLineN = sourceLine start
         endLineN = sourceLine end
+        maxLineNLen = length $ show endLineN
+        lineNoStr n = let 
+            diff = maxLineNLen - length (show n) in
+            unwords (replicate diff " ") ++ show n ++ " | "
 
 headerErr :: String -> String
 headerErr s = bgColor Red . color White . style Bold $ s
