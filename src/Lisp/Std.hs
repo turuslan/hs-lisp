@@ -61,7 +61,7 @@ lReadInt _ = do
 lReadStr :: Fun
 lReadStr _ = do
   str <- evalRead
-  return $ StringLiteral str initPos -- TODO: think
+  return $ StringLiteral str initPos
 
 lPrint :: Fun
 lPrint [(_, arg)] = do
@@ -312,7 +312,7 @@ lSplit [(_, d), (_, s)] = splitS d s
     splitS (StringLiteral ds _) (StringLiteral ss _) = 
       return
         $ toLispList 
-        $ map (\str -> StringLiteral str initPos) -- TODO: think
+        $ map (\str -> StringLiteral str initPos)
         $ splitOn ds ss
     splitS a1 a2 = evalError (mergePos (getPos a1) (getPos a2)) "'split' can be applied only to strings"
 lSplit _ = impossible

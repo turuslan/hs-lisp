@@ -26,8 +26,8 @@ lispError (LispError pos e) source = errorString e pos source
 errorString :: String -> Pos -> String -> String
 errorString msg pos@(Pos p1 _) source = unlines
     [ headerErr "Error:"
-    , (show p1) 
-    , "'" ++ (colored msg) ++ "'" 
+    , show p1 
+    , colored msg 
     , ppSourceCode source pos
     ]
     where

@@ -6,13 +6,11 @@ import Lisp.Errors
 import Lisp.Utils
 
 import Control.Monad (liftM, ap)
-import Data.Typeable
-
 
 import Text.Parsec.Pos
 
 initPos :: Pos
-initPos = Pos (initialPos "") (initialPos "") -- TODO: right position
+initPos = Pos (initialPos "") (initialPos "")
 
 -- | Type to represent lookup collection with string keys.
 type Lookup a = [(String, a)]
@@ -90,10 +88,11 @@ evalError p str = Eval (\s -> (s, Left $ Right $ LispError p str))
 
 
 
+-- | gget current monad state
+getState :: Eval State
+getState = Eval (\s -> (s, Left (Left s)))
 
-get :: Eval State
-get = Eval (\s -> (s, Left (Left s)))
-
+-- | Calculate Levenshtein distance
 levDistance :: String -> String -> Int
 levDistance "" "" = 0
 levDistance "" ys = length ys
@@ -104,18 +103,23 @@ levDistance (x:xs) (y:ys)
                             , levDistance (x:xs) ys
                             , levDistance xs ys]
 
+-- | Find similar names
 findSuggestions :: String -> [String] -> [String]
 findSuggestions name fnames = filter (\n -> 2 > levDistance name n) fnames
 
+-- | Unknown function
 errorFunctionNotFound :: String -> Eval String
 errorFunctionNotFound name = errUnknownIdentifier name "function" sFuns
 
+-- | Unknown variable
 errorVariableNotFound :: String -> Eval String
 errorVariableNotFound name = errUnknownIdentifier name "variable" sVars
 
+-- | Shouldn't be used directly!!! 
+--   Instead look 'errorFunctionNotFound' or 'errorFunctionNotFound' 
 errUnknownIdentifier :: String -> String -> (State -> Lookup a) -> Eval String
 errUnknownIdentifier name t locals = do
-  s <- get
+  s <- getState
   let names = map fst (locals s)
       suggestions = findSuggestions name names
       sMsg = case (length suggestions) of
@@ -127,7 +131,7 @@ errUnknownIdentifier name t locals = do
     ]
 
 
--- | Evaluare Lisp.Ast expression in specified scope.
+-- | Evaluate Lisp.Ast expression in specified scope.
 eval :: Vars -> SExpr -> Eval SExpr
 eval locals e = case e of
   Atom name pos -> do
@@ -152,7 +156,7 @@ eval locals e = case e of
             aargs' <- evalArgs locals aargs
             args <- getArgs name fargs aargs'
             expr <- fun args
-            return $ setPos expr pos--(mergePos pos (getPos expr))--fun args
+            return $ setPos expr pos
           _ -> do
             msg <- errorFunctionNotFound name
             evalError pos msg
@@ -180,10 +184,10 @@ evalArgs locals (DottedPair car cdr pos) = do
   return $ DottedPair car' cdr' pos
 evalArgs _ e = return (EmptyList $ getPos e)
 
--- | Convert actual arguments ot formal using format from function declaration.
+-- | Convert actual arguments to formal using format from function declaration.
 getArgs :: String -> SExpr -> SExpr -> Eval Vars
 getArgs _ (EmptyList _) (EmptyList _) = return []
-getArgs fname (EmptyList pos) _ = evalError pos ("Too many arguments given to '" ++ fname ++ "'")
+getArgs fname (EmptyList _) args = evalError (getPos args) ("Too many arguments given to '" ++ fname ++ "'")
 
 getArgs _ (DottedPair (Atom "&optional" _) fargs _) aargs = return $ getOpt fargs aargs where
   getOpt (DottedPair (Atom aname pos1) fcdr pos2) (EmptyList _) = (aname, (EmptyList pos1)) : getOpt fcdr (EmptyList pos2)
@@ -196,9 +200,9 @@ getArgs fname (DottedPair (Atom "&rest" _) _ pos) _ = evalError pos ("Wrong '&re
 getArgs fname (DottedPair (Atom aname _) fcdr _) (DottedPair acar acdr _) = do
   args <- getArgs fname fcdr acdr
   return ((aname, acar) : args)
-getArgs fname (DottedPair _ _ pos) _ = evalError pos ("Too few arguments given to function '" ++ fname ++ "'")
+getArgs fname (DottedPair _ _ _) arg = evalError (getPos arg) ("Too few arguments given to function '" ++ fname ++ "'")
 
-getArgs fname a _ = evalError (getPos a) ("getArgs '" ++ fname ++ "' not implemented") -- TODO: think
+getArgs fname a _ = evalError (getPos a) ("getArgs '" ++ fname ++ "' not implemented")
 
 
 
@@ -225,20 +229,23 @@ lDefun :: Special
 lDefun locals [(_, Atom name pos), (_, fargs), (_, body)] =
   Eval (\s -> (s {sFuns = (name, (fargs, f)) : sFuns s}, Left $ Left $ Atom name pos))
     where f args = eval (locals ++ args) body
-lDefun _ _ = evalError initPos ("Function name provided to 'defun' must be identifier") -- TODO: think
+lDefun _ [] = evalError initPos ("Function name provided to 'defun' must be identifier")
+lDefun _ ((_, a):_) = evalError (getPos a) ("Function name provided to 'defun' must be identifier")
 
 lSetq :: Special
 lSetq locals [(_, Atom name _), (_, value)] = do
   value' <- eval locals value
   Eval (\s -> (s {sVars = (name, value') : sVars s}, Left $ Left value'))
-lSetq _ _ = evalError initPos ("Variable name provided to 'set' must be identifier") -- TODO: think
+lSetq _ [] = evalError initPos ("Variable name provided to 'set' must be identifier")
+lSetq _ ((_, a):_) = evalError (getPos a) ("Variable name provided to 'set' must be identifier")
 
 lLet :: Special
 lLet locals [(_, DottedPair (DottedPair (Atom name _) (DottedPair value (EmptyList _) _) _) ( DottedPair (DottedPair (Atom name1 _) (DottedPair value1 (EmptyList _) _) _) (EmptyList _) _) _), (_, body)] = do
   value' <- eval locals value
   value1' <- eval locals value1
   eval ((name, value'):(name1, value1'):locals) body
-lLet _ _ = evalError initPos ("No 'body' arguments provided to function 'let'") -- TODO: think
+lLet _ [] = evalError initPos ("No arguments provided to function 'let'")
+lLet _ ((_, a):_) = evalError (getPos a) ("Unknown arguments provided to function 'let'")
 
 -- | Parse arguments format from lisp code.
 parseArgs :: String -> SExpr
