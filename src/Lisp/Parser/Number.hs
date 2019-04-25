@@ -41,7 +41,9 @@ number = do
 
     int :: String -> Parser SExpr
     int prefix = case reads prefix :: [(Integer, String)] of
-      [(value, "")] -> return $ IntegerLiteral value
+      [(value, "")] -> do
+        pos1 <- getPosition 
+        return $ IntegerLiteral value (Pos pos1 pos1)
       _ -> parserZero
 
     frEx :: String -> Parser SExpr
@@ -58,5 +60,7 @@ number = do
 
     double :: String -> Parser SExpr
     double prefix = case reads prefix :: [(Double, String)] of
-      [(value, "")] -> return $ FloatLiteral value
+      [(value, "")] -> do
+        pos1 <- getPosition
+        return $ FloatLiteral value (Pos pos1 pos1)
       _ -> parserZero

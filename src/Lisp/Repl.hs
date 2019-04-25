@@ -4,6 +4,7 @@ import Lisp.Eval
 import Lisp.Parser
 import Lisp.Std
 import Lisp.JsCompiler
+import Lisp.Errors
 
 import System.IO
 import Control.Exception
@@ -44,13 +45,13 @@ repl state = do
   where
     evalStr s = case parseStringS s of
       Left e -> do
-        putStrLn ("parse error: " ++ show e)
+        putStrLn (parseError e s)
         repl state
       Right exprs -> do
         (state', result) <- evalIO state $ foldl1 (>>) $ map (eval []) exprs
         case result of 
           Left v -> putStrLn $ show v
-          Right (LispError err) -> putStrLn ("error: " ++ err)
+          Right e -> putStrLn (lispError e s)
         repl state'
 
 -- | Compile lisp to js and save resulting file.

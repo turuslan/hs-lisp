@@ -3,7 +3,6 @@ module Lisp.Parser where
 import Lisp.Ast
 import Lisp.Parser.Number
 
-import Control.Monad
 import Text.Parsec
 import Text.Parsec.String
 import Text.Parsec.Language
@@ -42,28 +41,49 @@ parens = Token.parens lexer
 -- | Parse single expression.
 sexpr :: Parser SExpr
 sexpr =
-  try ((parens $ return ()) >> return EmptyList)
+  try ( do 
+    pos1 <- getPosition
+    (parens $ return ())
+    pos2 <- getPosition
+    return $ EmptyList (Pos pos1 pos2)
+  )
   <|> parens list
-  <|> liftM StringLiteral (Token.stringLiteral lexer)
+  <|> ( do
+    pos1 <- getPosition
+    s <- Token.stringLiteral lexer
+    pos2 <- getPosition
+    return $ StringLiteral s (Pos pos1 pos2)
+  )
   <|> try number
-  <|> liftM Atom (Token.identifier lexer)
+  <|> ( do
+    pos1 <- getPosition
+    i <- Token.identifier lexer
+    pos2 <- getPosition
+    return $ Atom i (Pos pos1 pos2)
+  )
   where
     list = do
+      pos1 <- getPosition
       car <- sexpr
       whiteSpace
-      cdr <- try (char '.' >> lookAhead (oneOf " \r\n\t(\"") >> whiteSpace >> sexpr) <|> (lookAhead sexpr >> list) <|> return EmptyList
-      return $ DottedPair car cdr
+      cdr <- try (char '.' 
+          >> lookAhead (oneOf " \r\n\t(\"") 
+          >> whiteSpace 
+          >> sexpr
+        )
+        <|> (lookAhead sexpr >> list) 
+        <|> return (EmptyList (Pos pos1 pos1))
+      pos2 <- getPosition
+      return $ DottedPair car cdr (Pos pos1 pos2)
 
 -- | Boilerplate
 whileParser :: Parser [SExpr]
-whileParser = whiteSpace >> sexprs
+whileParser = do 
+  whiteSpace
+  es <- sexprs
+  eof
+  return es
 
 -- | Safe farse string.
 parseStringS :: String -> Either ParseError [SExpr]
 parseStringS = parse whileParser ""
-
--- | Unsafe parse string.
-parseString :: String -> [SExpr]
-parseString s = case parseStringS s of
-  Left e -> error $ show e
-  Right r -> r
