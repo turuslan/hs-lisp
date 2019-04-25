@@ -84,6 +84,6 @@ whileParser = do
   eof
   return es
 
--- | Safe farse string.
+-- | Safe parse string.
 parseStringS :: String -> Either ParseError [SExpr]
 parseStringS = parse whileParser ""
