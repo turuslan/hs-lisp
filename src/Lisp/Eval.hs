@@ -112,8 +112,8 @@ errorFunctionNotFound :: String -> Eval String
 errorFunctionNotFound name = errUnknownIdentifier name "function" sFuns
 
 -- | Unknown variable
-errorVariableNotFound :: String -> Eval String
-errorVariableNotFound name = errUnknownIdentifier name "variable" sVars
+errorVariableNotFound :: Vars -> String -> Eval String
+errorVariableNotFound locals name = errUnknownIdentifier name "variable" (\s -> locals ++ sVars s)
 
 -- | Shouldn't be used directly!!! 
 --   Instead look 'errorFunctionNotFound' or 'errorFunctionNotFound' 
@@ -142,7 +142,7 @@ eval locals e = case e of
         case mvar of
           Just var -> return var
           _ -> do
-            msg <- errorVariableNotFound name
+            msg <- errorVariableNotFound locals name
             evalError pos msg
   DottedPair (Atom name pos) aargs _ -> do
     case lookup name specials of
