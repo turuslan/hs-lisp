@@ -32,6 +32,7 @@ dependencies:
 - base >= 4.7 && < 5
 - parsec
 - split
+- pretty-terminal
 
 library:
   source-dirs: src
