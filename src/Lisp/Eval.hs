@@ -240,6 +240,9 @@ lSetq _ [] = evalError initPos ("Variable name provided to 'set' must be identif
 lSetq _ ((_, a):_) = evalError (getPos a) ("Variable name provided to 'set' must be identifier")
 
 lLet :: Special
+lLet locals [(_, DottedPair (DottedPair (Atom name _) (DottedPair value (EmptyList _) _) _) (EmptyList _) _), (_, body)] = do
+  value' <- eval locals value
+  eval ((name, value'):locals) body
 lLet locals [(_, DottedPair (DottedPair (Atom name _) (DottedPair value (EmptyList _) _) _) ( DottedPair (DottedPair (Atom name1 _) (DottedPair value1 (EmptyList _) _) _) (EmptyList _) _) _), (_, body)] = do
   value' <- eval locals value
   value1' <- eval locals value1
